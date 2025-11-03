@@ -226,23 +226,30 @@ async def purge(interaction: discord.Interaction, amount: int):
     await interaction.followup.send(f"✅ Deleted {len(deleted)} messages.", ephemeral=True)
     
     
-@bot.tree.command(name="empty", description="Report a location to be empty/no stock", guild=discord.Object(id=1406738815854317658))
-async def empty(interaction: discord.Interaction, location: str, time:str=None):
-    current_time=time
-    if time is None:
-        now = datetime.now(ZoneInfo("America/New_York"))
-        current_time = now.strftime("%I:%M %p")
-        try:
-            await bot.db.execute(
+@bot.tree.command(
+    name="empty",
+    description="Report a location to be empty/no stock",
+    guild=discord.Object(id=1406738815854317658)
+)
+async def empty(interaction: discord.Interaction, location: str, time: str = None):
+    # Determine current time in Eastern Time
+    now = datetime.now(ZoneInfo("America/New_York"))
+    current_time = time or now.strftime("%I:%M %p")
+
+    # Log the command usage in the database
+    try:
+        await bot.db.execute(
             "INSERT INTO restock_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
             interaction.user.id,
             now,
             "empty"
-            )
-            logger.info(f"✅ Logged /restock use by {interaction.user} ({interaction.user.id}) at {eastern_time}")
-        except Exception as e:
-            logger.info(f"❌ Failed to log /restock usage: {e}")
-    await interaction.response.send_message(f'{location} is empty as of {current_time}')
+        )
+        logger.info(f"✅ Logged /empty by {interaction.user} ({interaction.user.id}) at {now}")
+    except Exception as e:
+        logger.error(f"❌ Failed to log /empty usage: {e}")
+
+    # Send the confirmation message
+    await interaction.response.send_message(f"{location} is empty as of {current_time}")
     await log_command_use(interaction, "test_restock")
 
 
