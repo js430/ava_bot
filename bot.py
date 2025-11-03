@@ -16,7 +16,7 @@ import asyncio
 import re
 
 
-load_dotenv()
+#load_dotenv()
 
 # # Get the current script directory
 # current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -888,6 +888,7 @@ async def on_ready():
         print(f"❌ Failed to sync commands: {e}")
     auto_cleanup.start()
 
+print(f"token: {repr(TOKEN)}")
 bot.run(TOKEN)
 
 
