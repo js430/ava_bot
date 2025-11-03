@@ -400,6 +400,55 @@ async def summarize_restocks(interaction: discord.Interaction, channel_name: str
         else:
             await interaction.followup.send(embed=e)
 
+@bot.tree.command(name="weekly_restock_summary", description="View all restocks grouped by day for the current week.", guild=discord.Object(id=1406738815854317658))
+async def weekly_restock_summary(interaction: discord.Interaction):
+    eastern = ZoneInfo("America/New_York")
+    now = datetime.now(eastern)
+
+    # Get Monday (start of week) and Sunday (end of week)
+    start_of_week = now - timedelta(days=now.weekday())  # Monday
+    start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
+
+    # Query database
+    rows = await bot.db.fetch("""
+        SELECT user_id, store_name, location, date
+        FROM restock_reports
+        WHERE date BETWEEN $1 AND $2
+        ORDER BY date ASC
+    """, start_of_week, end_of_week)
+
+    if not rows:
+        await interaction.response.send_message("📭 No restocks reported this week.")
+        return
+
+    # Group by weekday
+    grouped = defaultdict(list)
+    for r in rows:
+        weekday = r['date'].astimezone(eastern).strftime("%A %B %d")
+        grouped[weekday].append(r)
+
+    # Build formatted output
+    output_lines = []
+    for day, reports in grouped.items():
+        output_lines.append(f"**📅 {day}**")
+        for r in reports:
+            time_str = r['date'].astimezone(eastern).strftime("%I:%M %p")
+            output_lines.append(f"• {r['store_name']} ({r['location']}) — at {time_str}")
+        output_lines.append("")  # blank line between days
+
+    message = "\n".join(output_lines)
+
+    # Send as embed if long, else text
+    if len(message) > 1900:
+        embed = discord.Embed(
+            title="🗓️ Weekly Restock Summary",
+            description=message[:4000],  # truncate if too long
+            color=discord.Color.blurple()
+        )
+        await interaction.response.send_message(embed=embed)
+    else:
+        await interaction.response.send_message(f"**🗓️ Weekly Restock Summary:**\n\n{message}")
         
         
 # --- ERROR HANDLER ---
