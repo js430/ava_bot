@@ -18,18 +18,18 @@ import re
 
 load_dotenv()
 
-# Get the current script directory
-current_dir = os.path.dirname(os.path.abspath(__file__))
+# # Get the current script directory
+# current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Define the log file path
-log_file = os.path.join(current_dir, "app.log")
+# # Define the log file path
+# log_file = os.path.join(current_dir, "app.log")
 
 # Configure the logging
-logging.basicConfig(
-    filename=log_file,
-    level=logging.INFO,  # You can change this to DEBUG, WARNING, etc.
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+# logging.basicConfig(
+#     filename=log_file,
+#     level=logging.INFO,  # You can change this to DEBUG, WARNING, etc.
+#     format="%(asctime)s - %(levelname)s - %(message)s"
+# )
 
 intents=discord.Intents.default()
 intents.messages=True
@@ -504,22 +504,22 @@ class LocationButton(discord.ui.Button):
                 channel.append(alert_channels.get("nova"))
                 role_id.append(role_pings.get("nova"))
                 role_id.append(role_pings.get(self.store_choice.lower().replace(" ", "")))
-                logging.info(f'Lists: {channel}, {role_id}')
+                #.info(f'Lists: {channel}, {role_id}')
             elif self.location.lower().replace(" ", "") in notsonova:
                 channel.append(alert_channels.get("nova"))
                 role_id.append(role_pings.get("notsonova"))
                 role_id.append(role_pings.get(self.store_choice.lower().replace(" ", "")))
-                logging.info(f'Lists: {channel}, {role_id}')
+                #logging.info(f'Lists: {channel}, {role_id}')
             elif self.location.lower().replace(" ", "") in maryland:
                 channel.append(alert_channels.get("md"))
                 role_id.append(role_pings.get("maryland"))
                 role_id.append(role_pings.get(self.store_choice.lower().replace(" ", "")))
-                logging.info(f'Lists: {channel}, {role_id}')
+                #logging.info(f'Lists: {channel}, {role_id}')
             elif self.location.lower().replace(" ", "") in dc:
                 channel.append(alert_channels.get("dc"))
                 role_id.append(role_pings.get("dc"))
                 role_id.append(role_pings.get(self.store_choice.lower().replace(" ", "")))
-                logging.info(f'Lists: {channel}, {role_id}')
+                #logging.info(f'Lists: {channel}, {role_id}')
         channel=[x for x in channel if x is not None]
         role_id=[x for x in role_id if x is not None]
         if channel==[]:
@@ -610,22 +610,22 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
                 channel.append(alert_channels.get("nova"))
                 role_id.append(role_pings.get("nova"))
                 role_id.append(role_pings.get(self.store_choice.lower().replace(" ", "")))
-                logging.info(f'Lists: {channel}, {role_id}')
+                #logging.info(f'Lists: {channel}, {role_id}')
             elif custom_location.lower().replace(" ", "") in notsonova:
                 channel.append(alert_channels.get("nova"))
                 role_id.append(role_pings.get("notsonova"))
                 role_id.append(role_pings.get(self.store_choice.lower().replace(" ", "")))
-                logging.info(f'Lists: {channel}, {role_id}')
+                #logging.info(f'Lists: {channel}, {role_id}')
             elif custom_location.lower().replace(" ", "") in maryland:
                 channel.append(alert_channels.get("md"))
                 role_id.append(role_pings.get("maryland"))
                 role_id.append(role_pings.get(self.store_choice.lower().replace(" ", "")))
-                logging.info(f'Lists: {channel}, {role_id}')
+                #logging.info(f'Lists: {channel}, {role_id}')
             elif custom_location.lower().replace(" ", "") in dc:
                 channel.append(alert_channels.get("dc"))
                 role_id.append(role_pings.get("dc"))
                 role_id.append(role_pings.get(self.store_choice.lower().replace(" ", "")))
-                logging.info(f'Lists: {channel}, {role_id}')
+                #logging.info(f'Lists: {channel}, {role_id}')
         channel=[x for x in channel if x is not None]
         role_id=[x for x in role_id if x is not None]
         if channel==[]:
