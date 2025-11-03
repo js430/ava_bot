@@ -1047,11 +1047,12 @@ async def manual_restock(
         try:
             # Expecting input like "2025-11-03 14:30"
             timestamp = datetime.strptime(date_time, "%Y-%m-%d %H:%M")
+            timestamp=timestamp.astimezone(ZoneInfo("UTC"))
         except ValueError:
             await interaction.response.send_message("❌ Invalid date format! Use `YYYY-MM-DD HH:MM`.", ephemeral=True)
             return
     else:
-        timestamp = datetime.now(ZoneInfo("America/New_York"))
+        timestamp = datetime.now(ZoneInfo("UTC"))
 
     try:
         await bot.db.execute(
