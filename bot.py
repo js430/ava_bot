@@ -13,8 +13,8 @@ from discord.ext import commands, tasks
 from discord.utils import get
 from discord import app_commands
 import asyncio
-import re
-
+import ref
+from zoneinfo import ZoneInfo
 
 #load_dotenv()
 
@@ -38,7 +38,11 @@ intents.members=True
 
 TOKEN=os.getenv('DISCORD_TOKEN')
 TEST=False
-
+print("=== ENVIRONMENT VARIABLES ===")
+for k, v in os.environ.items():
+    if "TOKEN" in k:
+        print(f"{k}: {v}")
+print("=============================")
 #VARIABLES
 alert_channels={"test":1425953503536484513}
 #alert_channels={"nova": 1425953503536484513, "notsonova":1425953503536484513, "maryland": 1425953503536484513 }
@@ -207,7 +211,7 @@ async def purge(interaction: discord.Interaction, amount: int):
 async def empty(interaction: discord.Interaction, location: str, time:str=None):
     current_time=time
     if time is None:
-        now = datetime.now()
+        now = datetime.now(ZoneInfo("America/New_York"))
         current_time = now.strftime("%I:%M %p")
     await interaction.response.send_message(f'{location} is empty as of {current_time}')
     await log_command_use(interaction, "test_restock")
@@ -256,7 +260,7 @@ async def summarize_restocks(interaction: discord.Interaction, channel_name: str
     threads.sort(key=lambda t: t.created_at or datetime.min)
     thread_list = "\n".join([f"{i+1}. {thread.name}" for i, thread in enumerate(threads)])
 
-    today = datetime.now()
+    today = datetime.now(ZoneInfo("America/New_York"))
     monday = today - timedelta(days=today.weekday())  # weekday(): Monday=0, Sunday=6
     monday_str = monday.strftime("%B %d, %Y")
      # Group threads by date prefix (>= Monday) and store uncategorized
