@@ -135,7 +135,7 @@ async def setup_tables(conn):
         CREATE TABLE IF NOT EXISTS command_logs (
             id SERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL,
-            timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
             command_used STRING NOT NULL
         )
     """)
