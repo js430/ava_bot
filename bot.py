@@ -239,7 +239,7 @@ async def empty(interaction: discord.Interaction, location: str, time: str = Non
     # Log the command usage in the database
     try:
         await bot.db.execute(
-            "INSERT INTO restock_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
+            "INSERT INTO command_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
             interaction.user.id,
             now,
             "empty"
@@ -765,7 +765,7 @@ async def restock(interaction: discord.Interaction):
     try:
         eastern_time = datetime.now(ZoneInfo("America/New_York"))
         await bot.db.execute(
-            "INSERT INTO restock_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
+            "INSERT INTO command_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
             interaction.user.id,
             eastern_time,
             "restock"
