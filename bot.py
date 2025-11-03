@@ -121,6 +121,48 @@ DELETE_AFTER_SECONDS = 300
 intents.message_content = True 
 bot = commands.Bot(command_prefix='/', intents=intents)
 
+@tasks.loop(minutes=1)
+async def auto_cleanup():
+    channel = bot.get_channel(TARGET_CHANNEL_ID)
+    if not channel or not isinstance(channel, discord.TextChannel):
+        return
+
+    now = datetime.now(tz=timezone.utc)
+    cutoff = now - timedelta(seconds=DELETE_AFTER_SECONDS)
+
+    # Use channel.history to get messages
+    async for message in channel.history(limit=200, oldest_first=False):
+        # Skip bot messages
+        if message.author.bot:
+            continue
+        # Skip exempt roles
+        if any(role.id in EXEMPT_ROLE_IDS for role in message.author.roles):
+            continue
+        # Only delete messages older than cutoff
+        if message.created_at < cutoff:
+            try:
+                await message.delete()
+                await asyncio.sleep(1)  # 1-second delay to avoid rate limits
+            except discord.NotFound:
+                continue
+            except discord.Forbidden:
+                print(f"Missing permissions to delete message {message.id}")
+
+SUMMARY_CHANNEL_ID = 1431090547606687804  # 👈 Replace with your channel ID
+SUMMARY_HOUR = 22  # 24-hour format (22 = 10 PM Eastern)
+
+@tasks.loop(minutes=1)
+async def daily_summary_task():
+    """Runs every minute and checks if it's time to post the daily summary."""
+    eastern = ZoneInfo("America/New_York")
+    now = datetime.now(eastern)
+
+    # Run once a day at 10:00 PM Eastern
+    if now.hour == SUMMARY_HOUR and now.minute == 0:
+        channel = bot.get_channel(SUMMARY_CHANNEL_ID)
+        if channel:
+            await send_weekly_summary(channel)
+            
 async def connect_db():
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
@@ -233,8 +275,7 @@ async def purge(interaction: discord.Interaction, amount: int):
 
     # Send confirmation as ephemeral (only visible to command user)
     await interaction.followup.send(f"✅ Deleted {len(deleted)} messages.", ephemeral=True)
-    
-    
+      
 @bot.tree.command(
     name="empty",
     description="Report a location to be empty/no stock",
@@ -261,7 +302,6 @@ async def empty(interaction: discord.Interaction, location: str, time: str = Non
     await interaction.response.send_message(f"{location} is empty as of {current_time}")
     await log_command_use(interaction, "test_restock")
 
-
 @bot.tree.command(
         name="summarize_restocks",
         description="Lists all threads in one of the preset channels.",
@@ -271,6 +311,7 @@ async def empty(interaction: discord.Interaction, location: str, time: str = Non
         channel_name="Select a channel to summarize"
     )
 async def summarize_restocks(interaction: discord.Interaction, channel_name: str):
+    
     ALLOWED_ROLE_ID = 1406753334051737631  # <-- Replace with your Discord user ID
     if not any(role.id == ALLOWED_ROLE_ID for role in interaction.user.roles):
             await interaction.response.send_message(
@@ -399,18 +440,14 @@ async def summarize_restocks(interaction: discord.Interaction, channel_name: str
             await interaction.response.send_message(content="@everyone", embed=e)
         else:
             await interaction.followup.send(embed=e)
-
-@bot.tree.command(name="weekly_restock_summary", description="View all restocks grouped by day for the current week.", guild=discord.Object(id=1406738815854317658))
-async def weekly_restock_summary(interaction: discord.Interaction):
+async def send_weekly_summary(channel: discord.TextChannel):
+    """Generates and sends the weekly summary message."""
     eastern = ZoneInfo("America/New_York")
     now = datetime.now(eastern)
-
-    # Get Monday (start of week) and Sunday (end of week)
     start_of_week = now - timedelta(days=now.weekday())  # Monday
     start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
     end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
 
-    # Query database
     rows = await bot.db.fetch("""
         SELECT user_id, store_name, location, date
         FROM restock_reports
@@ -419,36 +456,35 @@ async def weekly_restock_summary(interaction: discord.Interaction):
     """, start_of_week, end_of_week)
 
     if not rows:
-        await interaction.response.send_message("📭 No restocks reported this week.")
+        await channel.send("📭 No restocks reported this week so far.")
         return
 
-    # Group by weekday
     grouped = defaultdict(list)
     for r in rows:
         weekday = r['date'].astimezone(eastern).strftime("%A %B %d")
         grouped[weekday].append(r)
 
-    # Build formatted output
     output_lines = []
     for day, reports in grouped.items():
         output_lines.append(f"**📅 {day}**")
         for r in reports:
             time_str = r['date'].astimezone(eastern).strftime("%I:%M %p")
             output_lines.append(f"• {r['store_name']} ({r['location']}) — at {time_str}")
-        output_lines.append("")  # blank line between days
+        output_lines.append("")
 
     message = "\n".join(output_lines)
+    embed = discord.Embed(
+        title=f"🗓️ Weekly Restock Summary ({now.strftime('%B %d, %Y')})",
+        description=message[:4000],
+        color=discord.Color.blurple()
+    )
+    await channel.send(embed=embed)
+    print(f"✅ Sent daily summary to {channel.name} at {now.strftime('%I:%M %p')}.")
 
-    # Send as embed if long, else text
-    if len(message) > 1900:
-        embed = discord.Embed(
-            title="🗓️ Weekly Restock Summary",
-            description=message[:4000],  # truncate if too long
-            color=discord.Color.blurple()
-        )
-        await interaction.response.send_message(embed=embed)
-    else:
-        await interaction.response.send_message(f"**🗓️ Weekly Restock Summary:**\n\n{message}")
+@daily_summary_task.before_loop
+async def before_daily_summary():
+    await bot.wait_until_ready()
+    print("⏰ Daily summary task started and waiting for next run...")
         
         
 # --- ERROR HANDLER ---
@@ -982,32 +1018,6 @@ async def gatekept(interaction: discord.Interaction):
             return
     await interaction.response.send_modal(GatekeptModal(interaction))
 
-@tasks.loop(minutes=1)
-async def auto_cleanup():
-    channel = bot.get_channel(TARGET_CHANNEL_ID)
-    if not channel or not isinstance(channel, discord.TextChannel):
-        return
-
-    now = datetime.now(tz=timezone.utc)
-    cutoff = now - timedelta(seconds=DELETE_AFTER_SECONDS)
-
-    # Use channel.history to get messages
-    async for message in channel.history(limit=200, oldest_first=False):
-        # Skip bot messages
-        if message.author.bot:
-            continue
-        # Skip exempt roles
-        if any(role.id in EXEMPT_ROLE_IDS for role in message.author.roles):
-            continue
-        # Only delete messages older than cutoff
-        if message.created_at < cutoff:
-            try:
-                await message.delete()
-                await asyncio.sleep(1)  # 1-second delay to avoid rate limits
-            except discord.NotFound:
-                continue
-            except discord.Forbidden:
-                print(f"Missing permissions to delete message {message.id}")
 
 @bot.event
 async def on_ready():
@@ -1020,12 +1030,12 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
     auto_cleanup.start()
+    daily_summary_task.start()
 
 async def main():
     async with bot:
         print(f"TOKEN: {repr(TOKEN)}")
         await bot.start(TOKEN)
-        a
 
 
 asyncio.run(main())
