@@ -1,0 +1,10 @@
+os
+discord.py
+random
+time
+string
+datetime
+logging
+dotenv
+asyncio
+re
