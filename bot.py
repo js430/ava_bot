@@ -236,7 +236,7 @@ async def empty(interaction: discord.Interaction, location: str, time:str=None):
             await bot.db.execute(
             "INSERT INTO restock_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
             interaction.user.id,
-            eastern_time,
+            now,
             "empty"
             )
             logger.info(f"✅ Logged /restock use by {interaction.user} ({interaction.user.id}) at {eastern_time}")
