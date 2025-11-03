@@ -139,6 +139,15 @@ async def setup_tables(conn):
             command_used TEXT NOT NULL
         )
     """)
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS restock_reports (
+            id SERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            store_name TEXT NOT NULL,
+            location TEXT NOT NULL,
+            date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     logger.info("✅ Table 'command_logs' ready.")
 
 
@@ -610,7 +619,19 @@ class LocationButton(discord.ui.Button):
         await thread.send(
             desc
         )
-        
+        if self.command_name!='test_restock':
+            try:
+                eastern_time = datetime.now(ZoneInfo("America/New_York"))
+                await bot.db.execute(
+                    "INSERT INTO restock_reports (user_id, store_name, location, date) VALUES ($1, $2, $3, $4)",
+                    interaction.user.id,
+                    self.store_choice,
+                    self.location,  # or custom_location for modals
+                    eastern_time
+                )
+                logger.info(f"✅ Logged restock report: {self.location} {self.store_choice} by {interaction.user} at {eastern_time}")
+            except Exception as e:
+                logger.error(f"❌ Failed to log restock report: {e}")
         if self.command_name == 'test_restock':
             view=CategorySelectView(interaction.user)
             await thread.send(f"{interaction.user.mention}, choose restock categories below", view= view)
@@ -715,7 +736,19 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
         await thread.send(
             desc
         )
-        
+        if self.command_name!='test_restock':
+            try:
+                eastern_time = datetime.now(ZoneInfo("America/New_York"))
+                await bot.db.execute(
+                    "INSERT INTO restock_reports (user_id, store_name, location, date) VALUES ($1, $2, $3, $4)",
+                    interaction.user.id,
+                    self.store_choice,
+                    custom_location,  # or custom_location for modals
+                    eastern_time
+                )
+                logger.info(f"✅ Logged restock report: {self.location} {self.store_choice} by {interaction.user} at {eastern_time}")
+            except Exception as e:
+                logger.error(f"❌ Failed to log restock report: {e}")
         if self.command_name == 'test_restock':
             view=CategorySelectView(interaction.user)
             await thread.send(f"{interaction.user.mention}, choose restock categories below", view= view)
@@ -770,9 +803,11 @@ async def restock(interaction: discord.Interaction):
             eastern_time,
             "restock"
         )
+        
         logger.info(f"✅ Logged /restock use by {interaction.user} ({interaction.user.id}) at {eastern_time}")
     except Exception as e:
         logger.info(f"❌ Failed to log /restock usage: {e}")
+    
     view = StoreChoiceView(interaction, "restock")
     await interaction.response.send_message(
         "Choose a **store**:", view=view, ephemeral=True
