@@ -136,7 +136,7 @@ async def setup_tables(conn):
             id SERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL,
             timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-            command_used STRING NOT NULL
+            command_used TEXT NOT NULL
         )
     """)
     logger.info("✅ Table 'command_logs' ready.")
