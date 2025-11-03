@@ -6,6 +6,7 @@ import time
 import string
 import datetime
 import logging
+import sys
 from datetime import date, datetime, timedelta, timezone
 from collections import defaultdict
 from dotenv import load_dotenv
@@ -15,6 +16,7 @@ from discord import app_commands
 import asyncio
 import re
 from zoneinfo import ZoneInfo
+import asyncpg
 
 #load_dotenv()
 
@@ -24,12 +26,14 @@ from zoneinfo import ZoneInfo
 # # Define the log file path
 # log_file = os.path.join(current_dir, "app.log")
 
-# Configure the logging
-# logging.basicConfig(
-#     filename=log_file,
-#     level=logging.INFO,  # You can change this to DEBUG, WARNING, etc.
-#     format="%(asctime)s - %(levelname)s - %(message)s"
-# )
+#Configure the logging
+logging.basicConfig(
+    level=logging.INFO,  # You can change this to DEBUG, WARNING, etc.
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+
+logger=logging.getLogger(__name__)
 
 intents=discord.Intents.default()
 intents.messages=True
@@ -38,11 +42,7 @@ intents.members=True
 
 TOKEN=os.getenv('DISCORD_TOKEN')
 TEST=False
-print("=== ENVIRONMENT VARIABLES ===")
-for k, v in os.environ.items():
-    if "TOKEN" in k:
-        print(f"{k}: {v}")
-print("=============================")
+
 #VARIABLES
 alert_channels={"test":1425953503536484513}
 #alert_channels={"nova": 1425953503536484513, "notsonova":1425953503536484513, "maryland": 1425953503536484513 }
@@ -121,6 +121,25 @@ DELETE_AFTER_SECONDS = 300
 intents.message_content = True 
 bot = commands.Bot(command_prefix='/', intents=intents)
 
+async def connect_db():
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        raise ValueError("DATABASE_URL not found in environment variables.")
+
+    conn = await asyncpg.connect(db_url)
+    logger.info("✅ Connected to PostgreSQL database successfully.")
+    return conn
+
+async def setup_tables(conn):
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS command_logs (
+            id SERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            command_used STRING NOT NULL
+        )
+    """)
+    logger.info("✅ Table 'command_logs' ready.")
 
 
 @bot.tree.command(
@@ -213,6 +232,16 @@ async def empty(interaction: discord.Interaction, location: str, time:str=None):
     if time is None:
         now = datetime.now(ZoneInfo("America/New_York"))
         current_time = now.strftime("%I:%M %p")
+        try:
+            await bot.db.execute(
+            "INSERT INTO restock_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
+            interaction.user.id,
+            eastern_time,
+            "empty"
+            )
+            logger.info(f"✅ Logged /restock use by {interaction.user} ({interaction.user.id}) at {eastern_time}")
+        except Exception as e:
+            logger.info(f"❌ Failed to log /restock usage: {e}")
     await interaction.response.send_message(f'{location} is empty as of {current_time}')
     await log_command_use(interaction, "test_restock")
 
@@ -377,11 +406,7 @@ async def purge_error(interaction: discord.Interaction, error: discord.app_comma
             f"⚠️ An unexpected error occurred: {error}",
             ephemeral=True
         )
-# @bot.tree.command(name="sync", description="Syncs bot commands")
-# async def sync_commands(interaction: discord.Interaction):
-#     await bot.tree.sync(guild=discord.Object(id=1406738815854317658)) # Syncs only for the specified guild
-#     # Or await bot.tree.sync() for global sync (use with caution during development)
-#     await interaction.response.send_message("Commands synced!")
+
 async def cleanup_thread(interaction: discord.Interaction, thread: discord.Thread, sent_message: discord.Message, delay: int = 120):
     await asyncio.sleep(delay)
     try:
@@ -428,7 +453,6 @@ async def log_command_use(interaction: discord.Interaction, command_name: str):
             pass
 
         
-
 # ---------- STEP 1: STORE CHOICE ----------
 class StoreChoiceView(discord.ui.View):
     def __init__(self, interaction: discord.Interaction, command_name:str):
@@ -731,6 +755,17 @@ class CategorySelectView(discord.ui.View):
 # ---------- MAIN COMMAND ----------
 @bot.tree.command(name="restock", description="Choose a store and location to create a thread.", guild=discord.Object(id=1406738815854317658))
 async def restock(interaction: discord.Interaction):
+    try:
+        eastern_time = datetime.now(ZoneInfo("America/New_York"))
+        await bot.db.execute(
+            "INSERT INTO restock_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
+            interaction.user.id,
+            eastern_time,
+            "restock"
+        )
+        logger.info(f"✅ Logged /restock use by {interaction.user} ({interaction.user.id}) at {eastern_time}")
+    except Exception as e:
+        logger.info(f"❌ Failed to log /restock usage: {e}")
     view = StoreChoiceView(interaction, "restock")
     await interaction.response.send_message(
         "Choose a **store**:", view=view, ephemeral=True
@@ -888,6 +923,9 @@ async def on_ready():
     try:
         synced = await bot.tree.sync(guild=discord.Object(id=1406738815854317658))
         print(f"✅ Synced {len(synced)} global commands.")
+        bot.db= await connect_db()
+        await setup_tables(bot.db)
+        logger.info(f"Logged in as {bot.user}")
     except Exception as e:
         print(f"❌ Failed to sync commands: {e}")
     auto_cleanup.start()
@@ -896,6 +934,7 @@ async def main():
     async with bot:
         print(f"TOKEN: {repr(TOKEN)}")
         await bot.start(TOKEN)
+        a
 
 
 asyncio.run(main())
