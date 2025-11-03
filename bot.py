@@ -13,7 +13,7 @@ from discord.ext import commands, tasks
 from discord.utils import get
 from discord import app_commands
 import asyncio
-import ref
+import re
 from zoneinfo import ZoneInfo
 
 #load_dotenv()
