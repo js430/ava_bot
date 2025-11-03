@@ -888,11 +888,13 @@ async def on_ready():
         print(f"❌ Failed to sync commands: {e}")
     auto_cleanup.start()
 
-print(f"token: {repr(TOKEN)}")
-bot.run(TOKEN)
+async def main():
+    async with bot:
+        print(f"TOKEN: {repr(TOKEN)}")
+        await bot.start(TOKEN)
 
 
-
+asyncio.run(main())
 
 
 
