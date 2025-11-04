@@ -74,8 +74,7 @@ location_links={"reston_target":"https://maps.app.goo.gl/AzGn3V5ES1sUyP2M7",
                 "wisconsinave_target": 'https://maps.app.goo.gl/N4UE7zMJEXpbTKkp6', 
                 "wisconsinavenue_target": "https://maps.app.goo.gl/N4UE7zMJEXpbTKkp6",
                 "georgiaave_target":"https://maps.app.goo.gl/NWVgapTxxedtLk7r8",
-                
-                
+              
 }
 
 SUMMARY_CHANNEL_ID = 1431090547606687804  # 👈 Replace with your channel ID
@@ -84,7 +83,7 @@ SUMMARY_HOUR = 22  # 24-hour format (22 = 10 PM Eastern)
 class Restocks(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
+        
     # --------------- Utility Functions -----------------
     @tasks.loop(minutes=1)
     async def daily_summary_task(self):
@@ -97,7 +96,50 @@ class Restocks(commands.Cog):
             channel = self.bot.get_channel(SUMMARY_CHANNEL_ID)
             if channel:
                 await self.send_daily_summary(channel)
-                
+     # ------------------------------
+    # 📊 Summary Sending Function
+    # ------------------------------
+    async def send_daily_summary(self, channel: discord.TextChannel):
+        """Pull today's restocks from DB and send a daily summary embed."""
+        try:
+            eastern = ZoneInfo("America/New_York")
+            today = date.today().strftime("%Y-%m-%d")
+
+            # Query today's restocks
+            async with self.bot.db.execute(
+                "SELECT store, location, reporter_id, date FROM restock_reports WHERE date = ?",
+                (today,),
+            ) as cursor:
+                rows = await cursor.fetchall()
+
+            total_restocks = len(rows)
+            locations = [f"{store} – {loc}" for store, loc, *_ in rows]
+
+            embed = discord.Embed(
+                title="📅 Daily Restock Summary",
+                description=f"**Date:** {today}",
+                color=discord.Color.blurple(),
+                timestamp=datetime.now(eastern)
+            )
+
+            if total_restocks == 0:
+                embed.add_field(name="No Restocks", value="No restocks were reported today.")
+            else:
+                embed.add_field(name="Total Restocks", value=str(total_restocks), inline=True)
+                embed.add_field(name="Locations", value="\n".join(locations[:10]), inline=False)
+                if total_restocks > 10:
+                    embed.add_field(
+                        name="More",
+                        value=f"...and {total_restocks - 10} more.",
+                        inline=False,
+                    )
+
+            embed.set_footer(text="Auto-generated daily summary")
+            await channel.send(embed=embed)
+            print(f"✅ Daily summary sent for {today} ({total_restocks} restocks).")
+
+        except Exception as e:
+            print(f"⚠️ Error sending daily summary: {e}")
     async def log_command_use(self, interaction: discord.Interaction, command_name: str):
         LOG_CHANNEL_ID = 1433472852467777711
         log_channel = interaction.client.get_channel(LOG_CHANNEL_ID)
@@ -231,6 +273,66 @@ class Restocks(commands.Cog):
         view = self.StoreChoiceView(interaction, "test_restock", self)
         await interaction.response.send_message("Choose a **store**:", view=view, ephemeral=True)
         await self.log_command_use(interaction, "test_restock")
+
+    @app_commands.command(
+    name="info",
+    description="Send an informational ping with up to 2 roles.",
+    guild=discord.Object(id=1406738815854317658)
+    )
+    @app_commands.describe(
+        message="The message to send",
+        role1="First role to ping (optional)",
+        role2="Second role to ping (optional)"
+    )
+    @app_commands.choices(
+        role1=[
+            app_commands.Choice(name="Nova", value="nova"),
+            app_commands.Choice(name="MD", value="md"),
+            app_commands.Choice(name="Not-so-nova", value="notsonova"),
+            app_commands.Choice(name="DC", value="dc")
+        ],
+        role2=[
+            app_commands.Choice(name="Target", value="target"),
+            app_commands.Choice(name="Walmart", value="walmart"),
+            app_commands.Choice(name="Best Buy", value="bestbuy")
+        ],
+    )
+    async def info(
+        interaction: discord.Interaction,
+        message: str,
+        role1: app_commands.Choice[str] = None,
+        role2: app_commands.Choice[str] = None,
+    ):
+        # ✅ List of role choices and their corresponding IDs
+        role_pings = {
+            "nova": 1406765992658341908,      # replace with your actual role IDs
+            "md": 1406766061012910191,
+            "notsonova": 1406766138163200091,
+            "dc": 1406765925281304659,
+            "target": 1406754673100193883,
+            "walmart": 1406754750778572831,
+            "bestbuy": 1406760883023118569
+        }
+
+        # Collect all chosen roles
+        chosen_roles = [r for r in (role1, role2) if r is not None]
+
+        # Convert to mentions
+        mentions = " ".join(f"<@&{role_pings.get(r.value)}>" for r in chosen_roles if r.value in role_pings)
+
+        # ✅ Create the embed
+        embed = discord.Embed(
+            title="Info",
+            description=message,
+            color=discord.Color.blue()
+        )
+        embed.set_footer(
+            text=f"Sent by {interaction.user.display_name}",
+            icon_url=interaction.user.display_avatar.url
+        )
+
+        # ✅ Send in the same channel where the command was used
+        await interaction.response.send_message(f"{mentions}", embed=embed)
 
 
 async def setup(bot):
