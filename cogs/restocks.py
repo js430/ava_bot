@@ -136,11 +136,13 @@ class LocationChoiceView(discord.ui.View):
         self.cog = cog
 
         # Example locations, can extend
-        locations = ["Fair Lakes", "Springfield", "Reston", "7C", "Chantilly", "Mosaic", "South Riding"]
-        for loc in locations:
-            self.add_item(LocationButton(loc, store_choice, command_name, cog))
+        locations = ["Fair Lakes", "Springfield", "Reston", "7C","Chantilly", "Mosaic", "South Riding", "Potomac Yard", "Sterling/PR", "Ashburn", "Gainesville", "Burke", "Manassas", "Leesburg", "Woodbridge", "Tysons"]
 
-        self.add_item(LocationOtherButton(store_choice, command_name, cog))
+        for location in locations:
+            self.add_item(LocationButton(location, store_choice, self.command_name))
+
+        # Add the "Other" option
+        self.add_item(LocationOtherButton(store_choice, self.command_name))
 
 
 class LocationButton(discord.ui.Button):
@@ -152,8 +154,105 @@ class LocationButton(discord.ui.Button):
         self.cog = cog
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"Creating thread for {self.location}...", ephemeral=True)
-        await self.cog.log_command_use(interaction, self.command_name)
+        # Determine channels and roles
+        channel_ids = []
+        role_ids = []
+
+        loc_key = self.location.lower().replace(" ", "")
+        store_key = self.store_choice.lower().replace(" ", "")
+
+        # Determine channels and roles based on location
+        if not TEST:
+            if loc_key in nova:
+                channel_ids.append(alert_channels.get("nova"))
+                role_ids.extend([role_pings.get("nova"), role_pings.get(store_key)])
+            elif loc_key in notsonova:
+                channel_ids.append(alert_channels.get("nova"))
+                role_ids.extend([role_pings.get("notsonova"), role_pings.get(store_key)])
+            elif loc_key in maryland:
+                channel_ids.append(alert_channels.get("md"))
+                role_ids.extend([role_pings.get("maryland"), role_pings.get(store_key)])
+            elif loc_key in dc:
+                channel_ids.append(alert_channels.get("dc"))
+                role_ids.extend([role_pings.get("dc"), role_pings.get(store_key)])
+
+        # Fallbacks
+        channel_ids = [cid for cid in channel_ids if cid is not None]
+        role_ids = [rid for rid in role_ids if rid is not None]
+
+        if not channel_ids:
+            channel_ids.append(interaction.channel_id)
+        if TEST:
+            channel_ids = [alert_channels.get("test")]
+
+        mentions = ""
+        if self.command_name != "test_restock" and role_ids:
+            mentions = " ".join(f"<@&{rid}>" for rid in role_ids) + ". "
+
+        # Respond to the user immediately
+        await interaction.response.send_message(
+            content=f"Creating thread for {self.location} {self.store_choice}...",
+            ephemeral=True
+        )
+
+        thread = None
+        sent_message = None
+        bot = self.cog.bot
+
+        # Send alert and create thread
+        for cid in channel_ids:
+            channel = bot.get_channel(cid)
+            if channel and isinstance(channel, discord.TextChannel):
+                sent_message = await channel.send(content=f"{self.location} {self.store_choice} {mentions}")
+
+                today_date = date.today()
+                formatted = f"{today_date.strftime('%A %B')} {today_date.day}"
+                thread_name = f"{formatted}: {self.location.title()} {self.store_choice.title()} Restock"
+
+                thread = await channel.create_thread(
+                    name=thread_name,
+                    type=discord.ChannelType.public_thread,
+                    message=sent_message
+                )
+                break
+
+        if thread is None:
+            logger.error("Failed to create thread.")
+            return
+
+        # Send initial description in thread
+        location_key = f"{loc_key}_{store_key}"
+        if location_key in location_links:
+            desc = f"Restock at {self.store_choice.title()} in **{self.location.title()}**. [Google maps]({location_links.get(location_key)})"
+        else:
+            desc = f"Restock at {self.store_choice.title()} in **{self.location.title()}**. Reported by {interaction.user.display_name}"
+
+        await thread.send(desc)
+
+        # Log to database
+        if self.command_name != "test_restock":
+            try:
+                eastern_time = datetime.now(ZoneInfo("America/New_York"))
+                await bot.db.execute(
+                    "INSERT INTO restock_reports (user_id, store_name, location, date, channel_name) VALUES ($1, $2, $3, $4, $5)",
+                    interaction.user.id,
+                    self.store_choice,
+                    self.location,
+                    eastern_time,
+                    channel.name
+                )
+                logger.info(f"✅ Logged restock report: {self.location} {self.store_choice} by {interaction.user} at {eastern_time}")
+            except Exception as e:
+                logger.error(f"❌ Failed to log restock report: {e}")
+
+        # Send category selection view if test mode
+        # if self.command_name == "test_restock":
+        #     view = CategorySelectView(interaction.user, thread)
+        #     await thread.send(
+        #         f"{interaction.user.mention}, choose restock categories below",
+        #         view=view
+        #     )
+        #     asyncio.create_task(cleanup_thread(interaction, thread, sent_message))
 
 
 class LocationOtherButton(discord.ui.Button):
@@ -177,8 +276,96 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
         self.cog = cog
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"Creating thread for {self.location_name.value}...", ephemeral=True)
-        await self.cog.log_command_use(interaction, self.command_name)
+        custom_location=self.location_name.value.strip()
+        channel_ids = []
+        role_ids = []
+
+        loc_key = custom_location.replace(" ", "")
+        store_key = self.store_choice.lower().replace(" ", "")
+
+        # Determine channels and roles based on location
+        if not TEST:
+            if loc_key in nova:
+                channel_ids.append(alert_channels.get("nova"))
+                role_ids.extend([role_pings.get("nova"), role_pings.get(store_key)])
+            elif loc_key in notsonova:
+                channel_ids.append(alert_channels.get("nova"))
+                role_ids.extend([role_pings.get("notsonova"), role_pings.get(store_key)])
+            elif loc_key in maryland:
+                channel_ids.append(alert_channels.get("md"))
+                role_ids.extend([role_pings.get("maryland"), role_pings.get(store_key)])
+            elif loc_key in dc:
+                channel_ids.append(alert_channels.get("dc"))
+                role_ids.extend([role_pings.get("dc"), role_pings.get(store_key)])
+
+        # Fallbacks
+        channel_ids = [cid for cid in channel_ids if cid is not None]
+        role_ids = [rid for rid in role_ids if rid is not None]
+
+        if not channel_ids:
+            channel_ids.append(interaction.channel_id)
+        if TEST:
+            channel_ids = [alert_channels.get("test")]
+
+        mentions = ""
+        if self.command_name != "test_restock" and role_ids:
+            mentions = " ".join(f"<@&{rid}>" for rid in role_ids) + ". "
+
+        # Respond to the user immediately
+        await interaction.response.send_message(
+            content=f"Creating thread for {custom_location} {self.store_choice}...",
+            ephemeral=True
+        )
+
+        thread = None
+        sent_message = None
+        bot = self.cog.bot
+
+        # Send alert and create thread
+        for cid in channel_ids:
+            channel = bot.get_channel(cid)
+            if channel and isinstance(channel, discord.TextChannel):
+                sent_message = await channel.send(content=f"{custom_location} {self.store_choice} {mentions}")
+
+                today_date = date.today()
+                formatted = f"{today_date.strftime('%A %B')} {today_date.day}"
+                thread_name = f"{formatted}: {custom_location.title()} {self.store_choice.title()} Restock"
+
+                thread = await channel.create_thread(
+                    name=thread_name,
+                    type=discord.ChannelType.public_thread,
+                    message=sent_message
+                )
+                break
+
+        if thread is None:
+            logger.error("Failed to create thread.")
+            return
+
+        # Send initial description in thread
+        location_key = f"{loc_key}_{store_key}"
+        if location_key in location_links:
+            desc = f"Restock at {self.store_choice.title()} in **{custom_location.title()}**. [Google maps]({location_links.get(location_key)})"
+        else:
+            desc = f"Restock at {self.store_choice.title()} in **{custom_location.title()}**. Reported by {interaction.user.display_name}"
+
+        await thread.send(desc)
+
+        # Log to database
+        if self.command_name != "test_restock":
+            try:
+                eastern_time = datetime.now(ZoneInfo("America/New_York"))
+                await bot.db.execute(
+                    "INSERT INTO restock_reports (user_id, store_name, location, date, channel_name) VALUES ($1, $2, $3, $4, $5)",
+                    interaction.user.id,
+                    self.store_choice,
+                    self.location,
+                    eastern_time,
+                    channel.name
+                )
+                logger.info(f"✅ Logged restock report: {custom_location} {self.store_choice} by {interaction.user} at {eastern_time}")
+            except Exception as e:
+                logger.error(f"❌ Failed to log restock report: {e}")
 
 
 # ---------------- COG ----------------
