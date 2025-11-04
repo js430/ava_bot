@@ -101,7 +101,7 @@ class Raffles(commands.Cog):
     # -----------------------------
     # Start raffle
     # -----------------------------
-    @app_commands.command(name="start_raffle", description="Start a new raffle",guild=discord.Object(id=1406738815854317658))
+    @app_commands.command(name="start_raffle", description="Start a new raffle")
     @app_commands.describe(
         name="Raffle name",
         max_entries="Total spots available",
@@ -109,6 +109,7 @@ class Raffles(commands.Cog):
         price_per_entry="Price per spot",
         duration_minutes="Duration in minutes"
     )
+    @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def start_raffle(self, interaction: discord.Interaction, name: str, max_entries: int, max_per_user: int, price_per_entry: float, duration_minutes: int):
         if name in self.active_raffles:
             await interaction.response.send_message("❌ Raffle with that name already exists.", ephemeral=True)
@@ -155,8 +156,9 @@ class Raffles(commands.Cog):
     # -----------------------------
     # Pick winner
     # -----------------------------
-    @app_commands.command(name="pick_winner", description="Pick a winner for a finished raffle",guild=discord.Object(id=1406738815854317658))
+    @app_commands.command(name="pick_winner", description="Pick a winner for a finished raffle")
     @app_commands.describe(name="Raffle name")
+    @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def pick_winner(self, interaction: discord.Interaction, name: str):
         raffle = self.active_raffles.get(name)
         if not raffle:

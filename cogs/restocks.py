@@ -463,13 +463,14 @@ class Restocks(commands.Cog):
 
     @app_commands.command(
     name="empty",
-    description="Report a location to be empty/no stock",
-    guild=discord.Object(id=1406738815854317658)
+    description="Report a location to be empty/no stock"
     )
     @app_commands.describe(
+    
     location="The location being reported empty",
     time="Optional time of report (defaults to current time)"
 )
+    @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def empty(self, interaction: discord.Interaction, location: str, time: str = None):
     # Determine current time in Eastern Time
         now = datetime.now(ZoneInfo("America/New_York"))
