@@ -835,7 +835,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
                     custom_location,
                     eastern_time,
                     guild_channel.name
-                )
+                ) 
                 logger.info(f"✅ Logged restock report: {custom_location} {self.store_choice} by {interaction.user} at {eastern_time}")
             except Exception as e:
                 logger.error(f"❌ Failed to log restock report: {e}")
