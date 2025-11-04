@@ -139,10 +139,10 @@ class LocationChoiceView(discord.ui.View):
         locations = ["Fair Lakes", "Springfield", "Reston", "7C","Chantilly", "Mosaic", "South Riding", "Potomac Yard", "Sterling/PR", "Ashburn", "Gainesville", "Burke", "Manassas", "Leesburg", "Woodbridge", "Tysons"]
 
         for location in locations:
-            self.add_item(LocationButton(location, store_choice, self.command_name))
+            self.add_item(LocationButton(location, store_choice, self.command_name, self.cog))
 
         # Add the "Other" option
-        self.add_item(LocationOtherButton(store_choice, self.command_name))
+        self.add_item(LocationOtherButton(store_choice, self.command_name, self.cog))
 
 
 class LocationButton(discord.ui.Button):
