@@ -187,7 +187,8 @@ async def setup_tables(conn):
             user_id BIGINT NOT NULL,
             store_name TEXT NOT NULL,
             location TEXT NOT NULL,
-            date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+            channel_name TEXT NOT NULL
         )
     """)
     logger.info("✅ Table 'command_logs' ready.")
@@ -450,7 +451,7 @@ async def send_weekly_summary(channel: discord.TextChannel):
     rows = await bot.db.fetch("""
         SELECT user_id, store_name, location, date
         FROM restock_reports
-        WHERE date BETWEEN $1 AND $2
+        WHERE date BETWEEN $1 AND $2 and channel_name !='online-restock-information'
         ORDER BY date ASC
     """, start_of_week, end_of_week)
 
@@ -707,11 +708,12 @@ class LocationButton(discord.ui.Button):
             try:
                 eastern_time = datetime.now(ZoneInfo("America/New_York"))
                 await bot.db.execute(
-                    "INSERT INTO restock_reports (user_id, store_name, location, date) VALUES ($1, $2, $3, $4)",
+                    "INSERT INTO restock_reports (user_id, store_name, location, date, channel) VALUES ($1, $2, $3, $4, $5)",
                     interaction.user.id,
                     self.store_choice,
                     self.location,
-                    eastern_time
+                    eastern_time,
+                    guild_channel.name
                 )
                 logger.info(f"✅ Logged restock report: {self.location} {self.store_choice} by {interaction.user} at {eastern_time}")
             except Exception as e:
@@ -827,11 +829,12 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
             try:
                 eastern_time = datetime.now(ZoneInfo("America/New_York"))
                 await bot.db.execute(
-                    "INSERT INTO restock_reports (user_id, store_name, location, date) VALUES ($1, $2, $3, $4)",
+                    "INSERT INTO restock_reports (user_id, store_name, location, date, channel) VALUES ($1, $2, $3, $4, $5)",
                     interaction.user.id,
                     self.store_choice,
                     custom_location,
-                    eastern_time
+                    eastern_time,
+                    guild_channel.name
                 )
                 logger.info(f"✅ Logged restock report: {custom_location} {self.store_choice} by {interaction.user} at {eastern_time}")
             except Exception as e:
@@ -1086,7 +1089,6 @@ async def on_ready():
 
 async def main():
     async with bot:
-        print(f"TOKEN: {repr(TOKEN)}")
         await bot.start(TOKEN)
 
 
