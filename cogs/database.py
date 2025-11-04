@@ -55,7 +55,7 @@ class Database(commands.Cog):
                     store_name TEXT NOT NULL,
                     location TEXT NOT NULL,
                     date TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                    channel_name TEXT NOT NULL
+                    channel_name TEXT
                 )
             """)
 
@@ -72,12 +72,16 @@ class Database(commands.Cog):
         except Exception as e:
             logger.error(f"⚠️ Error closing database connection: {e}")
 
+    # -----------------------------
+    # Manual restock command
+    # -----------------------------
     @app_commands.command(
-    name="manual_restock",
-    description="Manually insert a restock report into the database",
-    guild=discord.Object(id=1406738815854317658)  # replace with your guild ID
+        name="manual_restock",
+        description="Manually insert a restock report into the database"
     )
+    @app_commands.guilds(discord.Object(id=1406738815854317658))  # guild-specific
     async def manual_restock(
+        self,
         interaction: discord.Interaction,
         user: discord.User,
         store_name: str,
@@ -85,26 +89,28 @@ class Database(commands.Cog):
         date_time: str = None  # optional datetime in format 'YYYY-MM-DD HH:MM'
     ):
         """Manually log a restock report."""
-        # Check if user has the allowed role
         member = interaction.user
         if not any(role.id == ALLOWED_ROLE_ID for role in member.roles):
-            await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
+            await interaction.response.send_message(
+                "❌ You do not have permission to use this command.", ephemeral=True
+            )
             return
 
         # Determine timestamp
         if date_time:
             try:
-                # Expecting input like "2025-11-03 14:30"
                 timestamp = datetime.strptime(date_time, "%Y-%m-%d %H:%M")
-                timestamp=timestamp.astimezone(ZoneInfo("UTC"))
+                timestamp = timestamp.astimezone(ZoneInfo("UTC"))
             except ValueError:
-                await interaction.response.send_message("❌ Invalid date format! Use `YYYY-MM-DD HH:MM`.", ephemeral=True)
+                await interaction.response.send_message(
+                    "❌ Invalid date format! Use `YYYY-MM-DD HH:MM`.", ephemeral=True
+                )
                 return
         else:
             timestamp = datetime.now(ZoneInfo("UTC"))
 
         try:
-            await bot.db.execute(
+            await self.bot.db.execute(
                 "INSERT INTO restock_reports (user_id, store_name, location, date) VALUES ($1, $2, $3, $4)",
                 user.id,
                 store_name,
@@ -117,9 +123,12 @@ class Database(commands.Cog):
             )
             logger.info(f"✅ Manual restock inserted: {user} | {store_name} | {location} | {timestamp}")
         except Exception as e:
-            await interaction.response.send_message(f"❌ Failed to insert restock report: {e}", ephemeral=True)
+            await interaction.response.send_message(
+                f"❌ Failed to insert restock report: {e}", ephemeral=True
+            )
             logger.error(f"❌ Failed to insert manual restock: {e}")
-    
+
+
 async def setup(bot: commands.Bot):
     """Required setup function for the cog loader."""
     await bot.add_cog(Database(bot))
