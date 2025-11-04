@@ -708,7 +708,7 @@ class LocationButton(discord.ui.Button):
             try:
                 eastern_time = datetime.now(ZoneInfo("America/New_York"))
                 await bot.db.execute(
-                    "INSERT INTO restock_reports (user_id, store_name, location, date, channel) VALUES ($1, $2, $3, $4, $5)",
+                    "INSERT INTO restock_reports (user_id, store_name, location, date, channel_name) VALUES ($1, $2, $3, $4, $5)",
                     interaction.user.id,
                     self.store_choice,
                     self.location,
@@ -829,7 +829,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
             try:
                 eastern_time = datetime.now(ZoneInfo("America/New_York"))
                 await bot.db.execute(
-                    "INSERT INTO restock_reports (user_id, store_name, location, date, channel) VALUES ($1, $2, $3, $4, $5)",
+                    "INSERT INTO restock_reports (user_id, store_name, location, date, channel_name) VALUES ($1, $2, $3, $4, $5)",
                     interaction.user.id,
                     self.store_choice,
                     custom_location,
