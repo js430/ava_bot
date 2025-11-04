@@ -186,8 +186,10 @@ class LocationButton(discord.ui.Button):
             channel_ids = [alert_channels.get("test")]
 
         mentions = ""
-        if self.command_name != "test_restock" and role_ids:
+        if self.command_name != "test_restock":
             mentions = " ".join(f"<@&{rid}>" for rid in role_ids) + ". "
+        else:
+            mentions = f"TEST: IGNORE Alerted by: {interaction.user.display_name}, {interaction.user.id}"
 
         # Respond to the user immediately
         await interaction.response.send_message(
@@ -308,8 +310,10 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
             channel_ids = [alert_channels.get("test")]
 
         mentions = ""
-        if self.command_name != "test_restock" and role_ids:
+        if self.command_name != "test_restock":
             mentions = " ".join(f"<@&{rid}>" for rid in role_ids) + ". "
+        else:
+            mentions = f"TEST: IGNORE Alerted by: {interaction.user.display_name}, {interaction.user.id}"
 
         # Respond to the user immediately
         await interaction.response.send_message(
@@ -457,5 +461,36 @@ class Restocks(commands.Cog):
         embed.set_footer(text=f"Sent by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(f"{mentions}", embed=embed)
 
+    @app_commands.command(
+    name="empty",
+    description="Report a location to be empty/no stock",
+    guild=discord.Object(id=1406738815854317658)
+    )
+    @app_commands.describe(
+    location="The location being reported empty",
+    time="Optional time of report (defaults to current time)"
+)
+    async def empty(self, interaction: discord.Interaction, location: str, time: str = None):
+    # Determine current time in Eastern Time
+        now = datetime.now(ZoneInfo("America/New_York"))
+        current_time = time or now.strftime("%I:%M %p")
+
+        # Log the command usage in the database
+        try:
+            await self.bot.db.execute(
+                "INSERT INTO command_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
+                interaction.user.id,
+                now,
+                "empty"
+            )
+            logger.info(f"✅ Logged /empty by {interaction.user} ({interaction.user.id}) at {now}")
+        except Exception as e:
+            logger.error(f"❌ Failed to log /empty usage: {e}")
+
+        # Send confirmation message
+        await interaction.response.send_message(
+        f"📍 **{location}** is empty as of **{current_time}**.",
+        ephemeral=False
+    )
 async def setup(bot: commands.Bot):
     await bot.add_cog(Restocks(bot))

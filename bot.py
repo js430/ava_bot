@@ -4,6 +4,7 @@ import logging
 from discord.ext import commands, tasks
 import discord
 from dotenv import load_dotenv
+from datetime import datetime, timezone, timedelta
 
 # -----------------------------
 # 🧩 Load environment variables
@@ -11,7 +12,9 @@ from dotenv import load_dotenv
 load_dotenv()  # loads .env file with TOKEN, DATABASE_URL, etc.
 TOKEN = os.getenv("DISCORD_TOKEN")
 GUILD_IDS = [1406738815854317658]
-
+TARGET_CHANNEL_ID = 1407118323749224531  # The channel to auto-delete messages in
+EXEMPT_ROLE_IDS = [1406753334051737631] #Exempt role from autodelete
+DELETE_AFTER_SECONDS = 300
 # -----------------------------
 # ⚙️ Logging setup
 # -----------------------------
@@ -88,6 +91,7 @@ async def on_ready():
     logger.info(f"🤖 Logged in as {bot.user} (ID: {bot.user.id})")
     logger.info("------")
     await bot.change_presence(activity=discord.Game("Tracking restocks 👀"))
+    auto_cleanup.start()
      # -----------------------------
     # 🌐 Auto-sync slash commands
     # -----------------------------

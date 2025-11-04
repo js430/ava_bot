@@ -101,7 +101,7 @@ class Raffles(commands.Cog):
     # -----------------------------
     # Start raffle
     # -----------------------------
-    @app_commands.command(name="start_raffle", description="Start a new raffle")
+    @app_commands.command(name="start_raffle", description="Start a new raffle",guild=discord.Object(id=1406738815854317658))
     @app_commands.describe(
         name="Raffle name",
         max_entries="Total spots available",
@@ -155,7 +155,7 @@ class Raffles(commands.Cog):
     # -----------------------------
     # Pick winner
     # -----------------------------
-    @app_commands.command(name="pick_winner", description="Pick a winner for a finished raffle")
+    @app_commands.command(name="pick_winner", description="Pick a winner for a finished raffle",guild=discord.Object(id=1406738815854317658))
     @app_commands.describe(name="Raffle name")
     async def pick_winner(self, interaction: discord.Interaction, name: str):
         raffle = self.active_raffles.get(name)
