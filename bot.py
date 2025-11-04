@@ -369,8 +369,7 @@ async def summarize_restocks(interaction: discord.Interaction, channel_name: str
                     # Year assumed current
                     date_obj = datetime(datetime.now().year, datetime.strptime(month, "%B").month, day)
                     if date_obj >= monday-timedelta(days=1):
-                        if rest not in grouped_threads.get(date_label):
-                            grouped_threads[date_label].append(rest)
+                        grouped_threads[date_label].append(rest)
                     else:
                         continue  # Ignore dates before Monday
                 else:
