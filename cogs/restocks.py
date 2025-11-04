@@ -80,12 +80,114 @@ location_links={"reston_target":"https://maps.app.goo.gl/AzGn3V5ES1sUyP2M7",
 SUMMARY_CHANNEL_ID = 1431090547606687804  # 👈 Replace with your channel ID
 SUMMARY_HOUR = 22  # 24-hour format (22 = 10 PM Eastern)
 
+class StoreChoiceView(discord.ui.View):
+    def __init__(self, interaction: discord.Interaction, command_name: str, cog: "Restocks"):
+        super().__init__(timeout=60)
+        self.interaction = interaction
+        self.command_name = command_name
+        self.cog = cog
+
+    async def handle_store_choice(self, interaction: discord.Interaction, store: str):
+        await interaction.response.edit_message(
+            content=f"✅ You chose **{store}**.\nNow choose a **location:**",
+            view=LocationChoiceView(self.interaction, store, self.command_name, self.cog)
+        )
+
+    @discord.ui.button(label="Target", style=discord.ButtonStyle.primary)
+    async def target(self, interaction: discord.Interaction, _):
+        await self.handle_store_choice(interaction, "Target")
+
+    @discord.ui.button(label="Best Buy", style=discord.ButtonStyle.primary)
+    async def bestbuy(self, interaction: discord.Interaction, _):
+        await self.handle_store_choice(interaction, "Best Buy")
+
+    @discord.ui.button(label="Walmart", style=discord.ButtonStyle.primary)
+    async def walmart(self, interaction: discord.Interaction, _):
+        await self.handle_store_choice(interaction, "Walmart")
+
+    @discord.ui.button(label="Other", style=discord.ButtonStyle.secondary)
+    async def other(self, interaction: discord.Interaction, _):
+        await interaction.response.send_modal(StoreNameModal(self.interaction, self.command_name, self.cog))
+
+
+class StoreNameModal(discord.ui.Modal, title="Enter Store Name"):
+    store_name = discord.ui.TextInput(label="Store Name", placeholder="Enter custom store name")
+
+    def __init__(self, interaction: discord.Interaction, command_name: str, cog: "Restocks"):
+        super().__init__()
+        self.interaction = interaction
+        self.command_name = command_name
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        custom_name = self.store_name.value.strip()
+        await interaction.response.edit_message(
+            content=f"✅ You entered **{custom_name}**.\nNow choose a **location:**",
+            view=LocationChoiceView(self.interaction, custom_name, self.command_name, self.cog)
+        )
+
+
+class LocationChoiceView(discord.ui.View):
+    def __init__(self, interaction: discord.Interaction, store_choice: str, command_name: str, cog: "Restocks"):
+        super().__init__(timeout=60)
+        self.interaction = interaction
+        self.store_choice = store_choice
+        self.command_name = command_name
+        self.cog = cog
+
+        # Example locations, can extend
+        locations = ["Fair Lakes", "Springfield", "Reston", "7C", "Chantilly", "Mosaic", "South Riding"]
+        for loc in locations:
+            self.add_item(LocationButton(loc, store_choice, command_name, cog))
+
+        self.add_item(LocationOtherButton(store_choice, command_name, cog))
+
+
+class LocationButton(discord.ui.Button):
+    def __init__(self, location: str, store_choice: str, command_name: str, cog: "Restocks"):
+        super().__init__(label=location, style=discord.ButtonStyle.success)
+        self.location = location
+        self.store_choice = store_choice
+        self.command_name = command_name
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message(f"Creating thread for {self.location}...", ephemeral=True)
+        await self.cog.log_command_use(interaction, self.command_name)
+
+
+class LocationOtherButton(discord.ui.Button):
+    def __init__(self, store_choice: str, command_name: str, cog: "Restocks"):
+        super().__init__(label="Other", style=discord.ButtonStyle.secondary)
+        self.store_choice = store_choice
+        self.command_name = command_name
+        self.cog = cog
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_modal(LocationNameModal(self.store_choice, self.command_name, self.cog))
+
+
+class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
+    location_name = discord.ui.TextInput(label="Location", placeholder="Enter custom location")
+
+    def __init__(self, store_choice: str, command_name: str, cog: "Restocks"):
+        super().__init__()
+        self.store_choice = store_choice
+        self.command_name = command_name
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.send_message(f"Creating thread for {self.location_name.value}...", ephemeral=True)
+        await self.cog.log_command_use(interaction, self.command_name)
+
+
+# ---------------- COG ----------------
 class Restocks(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.daily_summary_task.start()
 
-    # --------------------- Daily Summary ---------------------
+    # Daily Summary Task
     @tasks.loop(minutes=1)
     async def daily_summary_task(self):
         eastern = ZoneInfo("America/New_York")
@@ -96,75 +198,44 @@ class Restocks(commands.Cog):
                 await self.send_daily_summary(channel)
 
     async def send_daily_summary(self, channel: discord.TextChannel):
+        """Example daily summary placeholder"""
         try:
-            eastern = ZoneInfo("America/New_York")
-            today = date.today()
-
-            rows = await self.bot.db.fetch(
-                "SELECT store_name, location, user_id, date FROM restock_reports WHERE date::date = $1",
-                today
-            )
-
-            total_restocks = len(rows)
-            locations = [f"{store} – {loc}" for store, loc, *_ in rows]
-
+            today = date.today().strftime("%Y-%m-%d")
             embed = discord.Embed(
-                title="📅 Daily Restock Summary",
-                description=f"**Date:** {today}",
+                title="📅 Daily Summary",
+                description=f"Summary for {today}",
                 color=discord.Color.blurple(),
-                timestamp=datetime.now(eastern)
+                timestamp=datetime.now(ZoneInfo("America/New_York"))
             )
-
-            if total_restocks == 0:
-                embed.add_field(name="No Restocks", value="No restocks were reported today.")
-            else:
-                embed.add_field(name="Total Restocks", value=str(total_restocks), inline=True)
-                embed.add_field(name="Locations", value="\n".join(locations[:10]), inline=False)
-                if total_restocks > 10:
-                    embed.add_field(name="More", value=f"...and {total_restocks - 10} more.", inline=False)
-
-            embed.set_footer(text="Auto-generated daily summary")
             await channel.send(embed=embed)
-            logger.info(f"✅ Daily summary sent for {today} ({total_restocks} restocks).")
-
         except Exception as e:
-            logger.error(f"⚠️ Error sending daily summary: {e}")
+            logger.error(f"Error sending summary: {e}")
 
-    # --------------------- Log Command Use ---------------------
     async def log_command_use(self, interaction: discord.Interaction, command_name: str):
         LOG_CHANNEL_ID = 1433472852467777711
         log_channel = self.bot.get_channel(LOG_CHANNEL_ID)
-        if not log_channel:
-            return
+        if log_channel:
+            message = f"**Command Used:** `{command_name}` by {interaction.user.mention}"
+            log_msg = await log_channel.send(message)
+            if command_name == "test_restock":
+                await asyncio.sleep(60)
+                try:
+                    await log_msg.delete()
+                except:
+                    pass
 
-        user = interaction.user
-        message = (
-            f"**Command Used:** `{command_name}`\n"
-            f"**User:** {user.name} ({user.id})\n"
-            f"<t:{int(interaction.created_at.timestamp())}:f>"
-        )
-
-        log_message = await log_channel.send(message)
-        if command_name == "test_restock":
-            await asyncio.sleep(60)
-            try:
-                await log_message.delete()
-            except Exception:
-                pass
-
-    # --------------------- Slash Commands ---------------------
+    # ---------------- COMMANDS ----------------
     @app_commands.command(name="restock", description="Choose a store and location to create a thread.")
     @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def restock(self, interaction: discord.Interaction):
-        # Your existing StoreChoiceView logic
-        view = self.StoreChoiceView(interaction, "restock", self)
+        view = StoreChoiceView(interaction, "restock", self)
         await interaction.response.send_message("Choose a **store**:", view=view, ephemeral=True)
         await self.log_command_use(interaction, "restock")
 
-    @app_commands.command(name="test_restock", description="Test restock thread creation (for testing only).")
+    @app_commands.command(name="test_restock", description="Test restock thread creation.")
     @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def test_restock(self, interaction: discord.Interaction):
-        view = self.StoreChoiceView(interaction, "test_restock", self)
+        view = StoreChoiceView(interaction, "test_restock", self)
         await interaction.response.send_message("Choose a **store**:", view=view, ephemeral=True)
         await self.log_command_use(interaction, "test_restock")
 
