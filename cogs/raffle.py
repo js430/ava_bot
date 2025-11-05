@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands, tasks
 from discord import app_commands
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import random
 import logging
 from zoneinfo import ZoneInfo
@@ -159,7 +159,7 @@ class Raffles(commands.Cog):
             await interaction.response.send_message("❌ Raffle with that name already exists.", ephemeral=True)
             return
 
-        end_time = datetime.utcnow() + timedelta(minutes=duration_minutes)
+        end_time = datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)
         raffle = Raffle(name, max_entries, max_per_user, price_per_entry, end_time)
         self.active_raffles[name] = raffle
 
@@ -175,13 +175,11 @@ class Raffles(commands.Cog):
             f"⏰ Ends in {raffle.time_left}",
             view=view
         )
-        raffle.message = await interaction.original_response()
+        sent_msg = await interaction.original_response()
+        raffle.message = sent_msg
+        raffle.view = view
 
-        # Start countdown to update button label
-        asyncio.create_task(self._update_raffle_timer(raffle))
-
-        # Start raffle end timer
-        asyncio.create_task(self._raffle_timer(interaction.channel, raffle, view))
+        asyncio.create_task(self._raffle_timer(interaction.channel, raffle))
 
     # -----------------------------
     # Countdown updates
@@ -242,7 +240,7 @@ class Raffles(commands.Cog):
             if isinstance(child, self.EnterRaffleButton):
                 child.disabled = True
                 child.label = f"Raffle Closed ({raffle.total_entries}/{raffle.max_entries})"
-
+    
         try:
             await raffle.message.edit(content=f"🎟️ **Raffle '{raffle.name}' has ended!**", view=raffle.view)
         except (discord.NotFound, discord.Forbidden):
