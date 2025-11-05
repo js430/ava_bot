@@ -202,11 +202,11 @@ class Raffles(commands.Cog):
             secs = int(remaining.total_seconds() % 60)
             time_left = f"{mins}m {secs}s left" if mins else f"{secs}s left"
 
-            # Update label text
-            for child in raffle.view.children:
-                if isinstance(child, self.EnterRaffleButton):
-                    child.label = f"Enter Raffle ({raffle.total_entries}/{raffle.max_entries}) — ⏳ {time_left}"
-                    break
+            # # Update label text
+            # for child in raffle.view.children:
+            #     if isinstance(child, self.EnterRaffleButton):
+            #         child.label = f"Enter Raffle ({raffle.total_entries}/{raffle.max_entries}) — ⏳ {time_left}"
+            #         break
 
             try:
                 await raffle.message.edit(view=raffle.view)
