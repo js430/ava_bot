@@ -8,6 +8,7 @@ import logging
 
 logger = logging.getLogger("raffle")
 logger.setLevel(logging.INFO)
+ALLOWED_ROLE_ID = 1406753334051737631
 
 # -----------------------------
 # Raffle data structure
@@ -21,7 +22,8 @@ class Raffle:
         self.end_time = end_time
         self.entries = {}  # user_id -> number of spots entered
         self.finished = False
-        self.thread = None  # private thread created after raffle ends
+        self.thread = None
+        self.payment_message_id = None  # new: track the summary message
 
     @property
     def total_entries(self):
@@ -67,21 +69,25 @@ class Raffles(commands.Cog):
                 await interaction.response.send_message("❌ You must enter at least 1 spot.", ephemeral=True)
                 return
             if current + spots_requested > self.raffle.max_per_user:
-                await interaction.response.send_message(f"❌ Max {self.raffle.max_per_user} spots per user.", ephemeral=True)
+                await interaction.response.send_message(
+                    f"❌ Max {self.raffle.max_per_user} spots per user.", ephemeral=True
+                )
                 return
             if self.raffle.total_entries + spots_requested > self.raffle.max_entries:
                 await interaction.response.send_message("❌ Not enough spots left in the raffle.", ephemeral=True)
                 return
 
             self.raffle.entries[user_id] = current + spots_requested
-            # Update button label
             for child in self.parent_view.children:
                 if isinstance(child, Raffles.EnterRaffleButton):
                     child.label = f"Enter Raffle ({self.raffle.total_entries}/{self.raffle.max_entries})"
                     break
 
             await interaction.response.edit_message(view=self.parent_view)
-            await interaction.followup.send(f"✅ You entered {spots_requested} spot(s). Total entries now: {self.raffle.entries[user_id]}.", ephemeral=True)
+            await interaction.followup.send(
+                f"✅ You entered {spots_requested} spot(s). Total entries now: {self.raffle.entries[user_id]}.",
+                ephemeral=True
+            )
 
     # -----------------------------
     # Button for entering raffle
@@ -110,7 +116,21 @@ class Raffles(commands.Cog):
         duration_minutes="Duration in minutes"
     )
     @app_commands.guilds(discord.Object(id=1406738815854317658))
-    async def start_raffle(self, interaction: discord.Interaction, name: str, max_entries: int, max_per_user: int, price_per_entry: float, duration_minutes: int):
+    async def start_raffle(
+        self,
+        interaction: discord.Interaction,
+        name: str,
+        max_entries: int,
+        max_per_user: int,
+        price_per_entry: float,
+        duration_minutes: int,
+    ):
+        member = interaction.user
+        if not any(role.id == ALLOWED_ROLE_ID for role in member.roles):
+            await interaction.response.send_message(
+                "❌ You do not have permission to use this command.", ephemeral=True
+            )
+            return
         if name in self.active_raffles:
             await interaction.response.send_message("❌ Raffle with that name already exists.", ephemeral=True)
             return
@@ -124,7 +144,11 @@ class Raffles(commands.Cog):
         view.add_item(button)
 
         await interaction.response.send_message(
-            f"🎟️ **Raffle '{name}' started!**\nPrice per entry: ${price_per_entry}\nTotal spots: {max_entries}\nMax per user: {max_per_user}\nEnds in {duration_minutes} minutes.",
+            f"🎟️ **Raffle '{name}' started!**\n"
+            f"💰 Price per entry: ${price_per_entry}\n"
+            f"🎫 Total spots: {max_entries}\n"
+            f"👤 Max entries per user: {max_per_user}\n"
+            f"⏰ Ends in {duration_minutes} minutes.",
             view=view
         )
 
@@ -149,8 +173,27 @@ class Raffles(commands.Cog):
             if member:
                 await thread.add_user(member)
 
-        participant_text = "\n".join([f"• {channel.guild.get_member(uid).mention} ({spots} spot(s))" for uid, spots in raffle.entries.items()])
-        await thread.send(f"🎟️ Raffle ended! Participants:\n{participant_text}")
+        # Participants list
+        participant_text = "\n".join(
+            [f"• {channel.guild.get_member(uid).mention} ({spots} spot(s))"
+             for uid, spots in raffle.entries.items()]
+        )
+        await thread.send(f"🎟️ **Raffle '{raffle.name}' has ended!**\n{participant_text}")
+
+        # Payment summary
+        payment_lines = []
+        for uid, spots in raffle.entries.items():
+            member = channel.guild.get_member(uid)
+            if member:
+                total = raffle.price_per_entry * spots
+                payment_lines.append(f"{member.mention} — {spots} entries — ${total:.2f}")
+
+        payment_msg = await thread.send(
+            "💸 **Payment Summary:**\n" + "\n".join(payment_lines)
+        )
+        raffle.payment_message_id = payment_msg.id
+
+        
         logger.info(f"Raffle '{raffle.name}' ended with {raffle.total_entries} total spots.")
 
     # -----------------------------
@@ -160,6 +203,12 @@ class Raffles(commands.Cog):
     @app_commands.describe(name="Raffle name")
     @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def pick_winner(self, interaction: discord.Interaction, name: str):
+        member = interaction.user
+        if not any(role.id == ALLOWED_ROLE_ID for role in member.roles):
+            await interaction.response.send_message(
+                "❌ You do not have permission to use this command.", ephemeral=True
+            )
+            return
         raffle = self.active_raffles.get(name)
         if not raffle:
             await interaction.response.send_message("❌ No raffle found.", ephemeral=True)
@@ -171,15 +220,54 @@ class Raffles(commands.Cog):
             await interaction.response.send_message("❌ No participants.", ephemeral=True)
             return
 
-        # Weighted pick based on number of spots
         weighted_list = []
         for uid, spots in raffle.entries.items():
             weighted_list.extend([uid] * spots)
         winner_id = random.choice(weighted_list)
         winner = interaction.guild.get_member(winner_id)
 
-        await raffle.thread.send(f"🏆 The winner of **{raffle.name}** is {winner.mention}!")
+        await raffle.thread.send(f"🏆 **The winner of '{raffle.name}' is {winner.mention}!** 🎉")
         await interaction.response.send_message("✅ Winner announced in the raffle thread.", ephemeral=True)
+
+    # -----------------------------
+    # Mark user as paid
+    # -----------------------------
+    @app_commands.command(name="paid", description="Mark a user as having paid for their raffle entries")
+    @app_commands.describe(user="The user who has paid")
+    @app_commands.guilds(discord.Object(id=1406738815854317658))
+    async def paid(self, interaction: discord.Interaction, user: discord.User):
+        member = interaction.user
+        if not any(role.id == ALLOWED_ROLE_ID for role in member.roles):
+            await interaction.response.send_message(
+                "❌ You do not have permission to use this command.", ephemeral=True
+            )
+            return
+        thread = interaction.channel
+        if not isinstance(thread, discord.Thread):
+            await interaction.response.send_message("❌ Use this command in a raffle thread.", ephemeral=True)
+            return
+
+        # Find raffle by this thread
+        raffle = next((r for r in self.active_raffles.values() if r.thread and r.thread.id == thread.id), None)
+        if not raffle or not raffle.payment_message_id:
+            await interaction.response.send_message("❌ Could not find raffle payment summary.", ephemeral=True)
+            return
+
+        try:
+            msg = await thread.fetch_message(raffle.payment_message_id)
+            lines = msg.content.split("\n")
+            updated = []
+            for line in lines:
+                if user.mention in line and not line.startswith("✅"):
+                    updated.append("✅ " + line)
+                else:
+                    updated.append(line)
+
+            await msg.edit(content="\n".join(updated))
+            await interaction.response.send_message(f"✅ Marked {user.mention} as paid.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Failed to update payment message: {e}", ephemeral=True)
+            logger.error(f"Error marking user as paid: {e}")
 
 # -----------------------------
 # Cog setup
