@@ -186,11 +186,11 @@ class Raffles(commands.Cog):
     # -----------------------------
     # Countdown updates
     # -----------------------------
-    async def _update_raffle_timer(self, raffle: Raffle, view: discord.ui.View):
-        """Continuously updates the raffle button label and remaining time."""
+    async def _update_raffle_timer(self, raffle: Raffle):
+        """Live-updates raffle message until it ends."""
         while not raffle.finished:
             await asyncio.sleep(5)
-            if not raffle.message:
+            if not raffle.message or not raffle.view:
                 break
 
             remaining = raffle.end_time - datetime.utcnow()
@@ -202,14 +202,14 @@ class Raffles(commands.Cog):
             secs = int(remaining.total_seconds() % 60)
             time_left = f"{mins}m {secs}s left" if mins else f"{secs}s left"
 
-            # Update button label and view safely
-            for child in view.children:
+            # Update label text
+            for child in raffle.view.children:
                 if isinstance(child, self.EnterRaffleButton):
                     child.label = f"Enter Raffle ({raffle.total_entries}/{raffle.max_entries}) — ⏳ {time_left}"
                     break
 
             try:
-                await raffle.message.edit(view=view)
+                await raffle.message.edit(view=raffle.view)
             except (discord.NotFound, discord.Forbidden, discord.HTTPException):
                 break
 
@@ -217,40 +217,41 @@ class Raffles(commands.Cog):
     # Timer to end raffle
     # -----------------------------
     async def _raffle_timer(self, channel: discord.TextChannel, raffle: Raffle, view: discord.ui.View):
-        """Waits until the raffle ends and then finalizes it."""
-        # Send initial message
-        raffle.message = await channel.send(
-            f"🎟️ **Raffle '{raffle.name}' is active!**\n"
+        """Starts and manages a raffle countdown."""
+        # Send raffle announcement
+        msg = await channel.send(
+            f"🎟️ **Raffle '{raffle.name}' is now live!**\n"
             f"💰 Price per entry: ${raffle.price_per_entry:.2f}\n"
             f"🎫 Total spots: {raffle.max_entries}\n"
             f"👤 Max per user: {raffle.max_per_user}\n"
             f"⏰ Ends <t:{int(raffle.end_time.timestamp())}:R>.",
             view=view
         )
+        raffle.message = msg
+        raffle.view = view  # ✅ store view manually
 
-        # Start live updates
-        asyncio.create_task(self._update_raffle_timer(raffle, view))
+        # Start timer updater
+        asyncio.create_task(self._update_raffle_timer(raffle))
 
         # Sleep until raffle ends
         await asyncio.sleep((raffle.end_time - datetime.utcnow()).total_seconds())
         raffle.finished = True
 
-        # Disable button at the end
-        for child in view.children:
+        # Disable button after end
+        for child in raffle.view.children:
             if isinstance(child, self.EnterRaffleButton):
                 child.disabled = True
                 child.label = f"Raffle Closed ({raffle.total_entries}/{raffle.max_entries})"
 
         try:
-            await raffle.message.edit(content=f"🎟️ **Raffle '{raffle.name}' has ended!**", view=view)
+            await raffle.message.edit(content=f"🎟️ **Raffle '{raffle.name}' has ended!**", view=raffle.view)
         except (discord.NotFound, discord.Forbidden):
             pass
 
-        # Create thread with participants
+        # Create thread
         entrants = [channel.guild.get_member(uid) for uid in raffle.entries.keys()]
-        thread_name = f"{raffle.name} - Entrants"
         thread = await channel.create_thread(
-            name=thread_name,
+            name=f"{raffle.name} - Entrants",
             type=discord.ChannelType.private_thread,
             reason="Raffle ended, listing participants"
         )
@@ -268,7 +269,7 @@ class Raffles(commands.Cog):
                 payment_lines.append(f"{member.mention} — {spots} entries — ${total:.2f}")
 
         payment_msg = await thread.send(
-            "🎟️ **Raffle has ended!** Here’s what everyone owes:\n" + "\n".join(payment_lines)
+            "💵 **Payment Summary:**\n" + "\n".join(payment_lines)
         )
         raffle.payment_message_id = payment_msg.id
 
