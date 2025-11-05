@@ -6,7 +6,6 @@ from zoneinfo import ZoneInfo
 import asyncio
 from collections import defaultdict
 import logging
-import aiosqlite
 
 logger = logging.getLogger("restocks")
 #VARIABLES
