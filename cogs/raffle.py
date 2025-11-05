@@ -179,7 +179,7 @@ class Raffles(commands.Cog):
         raffle.message = sent_msg
         raffle.view = view
 
-        asyncio.create_task(self._raffle_timer(interaction.channel, raffle))
+        asyncio.create_task(self._raffle_timer(interaction.channel, raffle, view))
 
     # -----------------------------
     # Countdown updates
@@ -231,8 +231,11 @@ class Raffles(commands.Cog):
         # Start timer updater
         asyncio.create_task(self._update_raffle_timer(raffle))
 
-        # Sleep until raffle endsawait asyncio.sleep((raffle.end_time - datetime.utcnow()).total_seconds())
-        
+         # ✅ sleep until the end (non-deprecated way)
+        now = datetime.now(timezone.utc)
+        sleep_duration = max(0, (raffle.end_time - now).total_seconds())
+        await asyncio.sleep(sleep_duration)
+
         raffle.finished = True
 
         # Disable button after end
