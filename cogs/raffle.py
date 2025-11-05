@@ -174,7 +174,7 @@ class Raffles(commands.Cog):
             f"⏰ Ends in {raffle.time_left}",
             view=view
         )
-        raffle.message = await msg.original_response()
+        raffle.message = await interaction.original_response()
 
         # Start countdown to update button label
         asyncio.create_task(self._update_raffle_timer(raffle))
