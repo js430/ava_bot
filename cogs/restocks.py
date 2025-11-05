@@ -363,7 +363,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
                     "INSERT INTO restock_reports (user_id, store_name, location, date, channel_name) VALUES ($1, $2, $3, $4, $5)",
                     interaction.user.id,
                     self.store_choice,
-                    self.location,
+                    custom_location,
                     eastern_time,
                     channel.name
                 )
