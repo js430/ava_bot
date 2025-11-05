@@ -167,7 +167,8 @@ class Raffles(commands.Cog):
         button = self.EnterRaffleButton(raffle, view)
         view.add_item(button)
 
-        msg = await interaction.response.send_message(
+        # Send only one message via interaction
+        await interaction.response.send_message(
             f"🎟️ **Raffle '{name}' started!**\n"
             f"💰 Price per entry: ${price_per_entry:.2f}\n"
             f"🎫 Total spots: {max_entries}\n"
@@ -175,41 +176,41 @@ class Raffles(commands.Cog):
             f"⏰ Ends in {raffle.time_left}",
             view=view
         )
-        sent_msg = await interaction.original_response()
-        raffle.message = sent_msg
+        raffle.message = await interaction.original_response()
         raffle.view = view
 
-        asyncio.create_task(self._raffle_timer(interaction.channel, raffle, view))
+        # Start the timer
+        asyncio.create_task(self._raffle_timer(raffle))
 
-    # -----------------------------
-    # Countdown updates
-    # -----------------------------
-    async def _update_raffle_timer(self, raffle: Raffle):
-        """Live-updates raffle message until it ends."""
-        while not raffle.finished:
-            await asyncio.sleep(5)
-            if not raffle.message or not raffle.view:
-                break
-            remaining = raffle.end_time - datetime.now(timezone.utc)
+        # -----------------------------
+        # Countdown updates
+        # -----------------------------
+        async def _update_raffle_timer(self, raffle: Raffle):
+            """Live-updates raffle message until it ends."""
+            while not raffle.finished:
+                await asyncio.sleep(5)
+                if not raffle.message or not raffle.view:
+                    break
+                remaining = raffle.end_time - datetime.now(timezone.utc)
 
-            if remaining.total_seconds() <= 0:
-                raffle.finished = True
-                break
+                if remaining.total_seconds() <= 0:
+                    raffle.finished = True
+                    break
 
-            mins = math.floor(remaining.total_seconds() / 60)
-            secs = int(remaining.total_seconds() % 60)
-            time_left = f"{mins}m {secs}s left" if mins else f"{secs}s left"
+                mins = math.floor(remaining.total_seconds() / 60)
+                secs = int(remaining.total_seconds() % 60)
+                time_left = f"{mins}m {secs}s left" if mins else f"{secs}s left"
 
-            # # Update label text
-            # for child in raffle.view.children:
-            #     if isinstance(child, self.EnterRaffleButton):
-            #         child.label = f"Enter Raffle ({raffle.total_entries}/{raffle.max_entries}) — ⏳ {time_left}"
-            #         break
+                # # Update label text
+                # for child in raffle.view.children:
+                #     if isinstance(child, self.EnterRaffleButton):
+                #         child.label = f"Enter Raffle ({raffle.total_entries}/{raffle.max_entries}) — ⏳ {time_left}"
+                #         break
 
-            try:
-                await raffle.message.edit(view=raffle.view)
-            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-                break
+                try:
+                    await raffle.message.edit(view=raffle.view)
+                except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                    break
 
     # -----------------------------
     # Timer to end raffle

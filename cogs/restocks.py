@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 import asyncio
 from collections import defaultdict
 import logging
+import aiosqlite
 
 logger = logging.getLogger("restocks")
 #VARIABLES
@@ -126,7 +127,6 @@ class StoreNameModal(discord.ui.Modal, title="Enter Store Name"):
             view=LocationChoiceView(self.interaction, custom_name, self.command_name, self.cog)
         )
 
-
 class LocationChoiceView(discord.ui.View):
     def __init__(self, interaction: discord.Interaction, store_choice: str, command_name: str, cog: "Restocks"):
         super().__init__(timeout=60)
@@ -143,7 +143,6 @@ class LocationChoiceView(discord.ui.View):
 
         # Add the "Other" option
         self.add_item(LocationOtherButton(store_choice, self.command_name, self.cog))
-
 
 class LocationButton(discord.ui.Button):
     def __init__(self, location: str, store_choice: str, command_name: str, cog: "Restocks"):
@@ -256,7 +255,6 @@ class LocationButton(discord.ui.Button):
         #     )
         #     asyncio.create_task(cleanup_thread(interaction, thread, sent_message))
 
-
 class LocationOtherButton(discord.ui.Button):
     def __init__(self, store_choice: str, command_name: str, cog: "Restocks"):
         super().__init__(label="Other", style=discord.ButtonStyle.secondary)
@@ -266,7 +264,6 @@ class LocationOtherButton(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_modal(LocationNameModal(self.store_choice, self.command_name, self.cog))
-
 
 class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
     location_name = discord.ui.TextInput(label="Location", placeholder="Enter custom location")
@@ -371,14 +368,12 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
             except Exception as e:
                 logger.error(f"❌ Failed to log restock report: {e}")
 
-
 # ---------------- COG ----------------
 class Restocks(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.daily_summary_task.start()
 
-    # Daily Summary Task
     @tasks.loop(minutes=1)
     async def daily_summary_task(self):
         eastern = ZoneInfo("America/New_York")
@@ -389,18 +384,66 @@ class Restocks(commands.Cog):
                 await self.send_daily_summary(channel)
 
     async def send_daily_summary(self, channel: discord.TextChannel):
-        """Example daily summary placeholder"""
+        """Send a daily summary of restocks from restock_reports table"""
+        eastern = ZoneInfo("America/New_York")
+        today_str = date.today().strftime("%Y-%m-%d")
+
         try:
-            today = date.today().strftime("%Y-%m-%d")
+            # Fetch today's restock reports
+            query = """
+                SELECT store_name, location, user_id, date
+                FROM restock_reports
+                WHERE date::date = $1
+                ORDER BY store_name ASC, location ASC
+            """
+            rows = await self.bot.db.fetch(query, today_str)
+            if not rows:
+                embed = discord.Embed(
+                    title="📅 Daily Summary",
+                    description=f"No restocks were reported on {today_str}.",
+                    color=discord.Color.red(),
+                    timestamp=datetime.now(eastern)
+                )
+                await channel.send(embed=embed)
+                return
+
+            # Group by store
+            store_data = {}
+            for store, product_type, reporter, timestamp in rows:
+                store_data.setdefault(store, []).append((product_type, reporter, timestamp))
+
+            # Build embed
             embed = discord.Embed(
-                title="📅 Daily Summary",
-                description=f"Summary for {today}",
+                title="📦 Daily Restock Summary",
+                description=f"Summary for {today_str}",
                 color=discord.Color.blurple(),
-                timestamp=datetime.now(ZoneInfo("America/New_York"))
+                timestamp=datetime.now(eastern)
             )
+
+            for store, reports in store_data.items():
+                lines = []
+                for product_type, reporter, timestamp in reports:
+                    local_time = datetime.fromisoformat(timestamp).astimezone(eastern)
+                    lines.append(f"🕒 `{local_time.strftime('%I:%M %p')}` — **{product_type}** *(by {reporter})*")
+                embed.add_field(
+                    name=f"🏬 {store}",
+                    value="\n".join(lines[:20]),  # limit to 20 lines per store
+                    inline=False
+                )
+
+            embed.set_footer(text="Restock data automatically compiled from reports")
+
             await channel.send(embed=embed)
+            logger.info(f"✅ Sent daily restock summary for {today_str}")
+
         except Exception as e:
-            logger.error(f"Error sending summary: {e}")
+            logger.error(f"Error sending daily summary: {e}")
+            error_embed = discord.Embed(
+                title="⚠️ Error Generating Summary",
+                description=f"An error occurred: `{e}`",
+                color=discord.Color.red()
+            )
+            await channel.send(embed=error_embed)
 
     async def log_command_use(self, interaction: discord.Interaction, command_name: str):
         LOG_CHANNEL_ID = 1433472852467777711
