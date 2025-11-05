@@ -190,15 +190,18 @@ class Raffles(commands.Cog):
             await asyncio.sleep(5)  # update every 5 seconds
             if not raffle.message:
                 break
-            for child in raffle.message.components[0].children:
-                if isinstance(child, self.EnterRaffleButton):
-                    if raffle.finished:
-                        child.disabled = True
-                    child.label = f"Enter Raffle ({raffle.total_entries}/{raffle.max_entries}) - {raffle.time_left}"
-            try:
-                await raffle.message.edit(view=raffle.message.components[0])
-            except (discord.NotFound, discord.Forbidden):
-                break
+
+            # Update button label and disabled status
+            if raffle.message.view:  # ensure there's a View
+                for child in raffle.message.view.children:
+                    if isinstance(child, self.EnterRaffleButton):
+                        child.label = f"Enter Raffle ({raffle.total_entries}/{raffle.max_entries}) - {raffle.time_left}"
+                        child.disabled = raffle.finished
+
+                try:
+                    await raffle.message.edit(view=raffle.message.view)
+                except (discord.NotFound, discord.Forbidden):
+                    break
 
     # -----------------------------
     # Timer to end raffle
