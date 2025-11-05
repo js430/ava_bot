@@ -5,15 +5,15 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 import random
 import logging
-from zoneinfo import ZoneInfo
 import math
 
 logger = logging.getLogger("raffle")
 logger.setLevel(logging.INFO)
-ALLOWED_ROLE_ID = 1406753334051737631
+
+ALLOWED_ROLE_ID = 1406753334051737631  # role allowed to start raffles
 
 # -----------------------------
-# Raffle data structure
+# Raffle Data Structure
 # -----------------------------
 class Raffle:
     def __init__(self, name, max_entries, max_per_user, price_per_entry, end_time):
@@ -22,11 +22,12 @@ class Raffle:
         self.max_per_user = max_per_user
         self.price_per_entry = price_per_entry
         self.end_time = end_time
-        self.entries = {}  # user_id -> number of spots entered
+        self.entries = {}  # user_id -> spots entered
         self.finished = False
         self.thread = None
-        self.payment_message_id = None  # track the summary message
-        self.message = None  # track the original message with button
+        self.payment_message_id = None
+        self.message = None  # The original interaction message
+        self.view = None     # The view with buttons
 
     @property
     def total_entries(self):
@@ -40,13 +41,15 @@ class Raffle:
         minutes, seconds = divmod(int(delta.total_seconds()), 60)
         hours, minutes = divmod(minutes, 60)
         parts = []
-        if hours: parts.append(f"{hours}h")
-        if minutes: parts.append(f"{minutes}m")
+        if hours:
+            parts.append(f"{hours}h")
+        if minutes:
+            parts.append(f"{minutes}m")
         parts.append(f"{seconds}s")
         return " ".join(parts)
 
 # -----------------------------
-# Raffle Cog
+# Raffles Cog
 # -----------------------------
 class Raffles(commands.Cog):
     """Raffle system with entry limits per user."""
@@ -98,7 +101,7 @@ class Raffles(commands.Cog):
             # Update button label dynamically
             for child in self.parent_view.children:
                 if isinstance(child, Raffles.EnterRaffleButton):
-                    child.label = f"Enter Raffle ({self.raffle.total_entries}/{self.raffle.max_entries})"
+                    child.label = f"Enter Raffle ({self.raffle.total_entries}/{self.raffle.max_entries}) — ⏳ {self.raffle.time_left}"
                     break
 
             # Edit original message safely
@@ -129,7 +132,7 @@ class Raffles(commands.Cog):
             await interaction.response.send_modal(Raffles.EnterRaffleModal(self.raffle, self.parent_view))
 
     # -----------------------------
-    # Start raffle
+    # Start raffle command
     # -----------------------------
     @app_commands.command(name="start_raffle", description="Start a new raffle")
     @app_commands.describe(
@@ -151,10 +154,9 @@ class Raffles(commands.Cog):
     ):
         member = interaction.user
         if not any(role.id == ALLOWED_ROLE_ID for role in member.roles):
-            await interaction.response.send_message(
-                "❌ You do not have permission to use this command.", ephemeral=True
-            )
+            await interaction.response.send_message("❌ You do not have permission to use this command.", ephemeral=True)
             return
+
         if name in self.active_raffles:
             await interaction.response.send_message("❌ Raffle with that name already exists.", ephemeral=True)
             return
@@ -166,8 +168,9 @@ class Raffles(commands.Cog):
         view = discord.ui.View()
         button = self.EnterRaffleButton(raffle, view)
         view.add_item(button)
+        raffle.view = view
 
-        # Send only one message via interaction
+        # Send the raffle message via the interaction
         await interaction.response.send_message(
             f"🎟️ **Raffle '{name}' started!**\n"
             f"💰 Price per entry: ${price_per_entry:.2f}\n"
@@ -177,80 +180,47 @@ class Raffles(commands.Cog):
             view=view
         )
         raffle.message = await interaction.original_response()
-        raffle.view = view
 
-        # Start the timer
+        # Start the live timer
         asyncio.create_task(self._raffle_timer(raffle))
 
-        # -----------------------------
-        # Countdown updates
-        # -----------------------------
-        async def _update_raffle_timer(self, raffle: Raffle):
-            """Live-updates raffle message until it ends."""
-            while not raffle.finished:
-                await asyncio.sleep(5)
-                if not raffle.message or not raffle.view:
-                    break
-                remaining = raffle.end_time - datetime.now(timezone.utc)
-
-                if remaining.total_seconds() <= 0:
-                    raffle.finished = True
-                    break
-
-                mins = math.floor(remaining.total_seconds() / 60)
-                secs = int(remaining.total_seconds() % 60)
-                time_left = f"{mins}m {secs}s left" if mins else f"{secs}s left"
-
-                # # Update label text
-                # for child in raffle.view.children:
-                #     if isinstance(child, self.EnterRaffleButton):
-                #         child.label = f"Enter Raffle ({raffle.total_entries}/{raffle.max_entries}) — ⏳ {time_left}"
-                #         break
-
-                try:
-                    await raffle.message.edit(view=raffle.view)
-                except (discord.NotFound, discord.Forbidden, discord.HTTPException):
-                    break
-
     # -----------------------------
-    # Timer to end raffle
+    # Live raffle timer
     # -----------------------------
-    async def _raffle_timer(self, channel: discord.TextChannel, raffle: Raffle, view: discord.ui.View):
-        """Starts and manages a raffle countdown."""
-        # Send raffle announcement
-        msg = await channel.send(
-            f"🎟️ **Raffle '{raffle.name}' is now live!**\n"
-            f"💰 Price per entry: ${raffle.price_per_entry:.2f}\n"
-            f"🎫 Total spots: {raffle.max_entries}\n"
-            f"👤 Max per user: {raffle.max_per_user}\n"
-            f"⏰ Ends <t:{int(raffle.end_time.timestamp())}:R>.",
-            view=view
-        )
-        raffle.message = msg
-        raffle.view = view  # ✅ store view manually
+    async def _raffle_timer(self, raffle: Raffle):
+        while not raffle.finished:
+            await asyncio.sleep(5)
+            if not raffle.message or not raffle.view:
+                break
 
-        # Start timer updater
-        asyncio.create_task(self._update_raffle_timer(raffle))
+            # Update button label with remaining time
+            for child in raffle.view.children:
+                if isinstance(child, self.EnterRaffleButton):
+                    child.label = f"Enter Raffle ({raffle.total_entries}/{raffle.max_entries}) — ⏳ {raffle.time_left}"
 
-         # ✅ sleep until the end (non-deprecated way)
-        now = datetime.now(timezone.utc)
-        sleep_duration = max(0, (raffle.end_time - now).total_seconds())
-        await asyncio.sleep(sleep_duration)
+            try:
+                await raffle.message.edit(view=raffle.view)
+            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                break
 
-        raffle.finished = True
+            # End raffle if time is up
+            if (raffle.end_time - datetime.now(timezone.utc)).total_seconds() <= 0:
+                raffle.finished = True
+                break
 
-        # Disable button after end
+        # Disable button after raffle ends
         for child in raffle.view.children:
             if isinstance(child, self.EnterRaffleButton):
                 child.disabled = True
                 child.label = f"Raffle Closed ({raffle.total_entries}/{raffle.max_entries})"
-    
+
         try:
             await raffle.message.edit(content=f"🎟️ **Raffle '{raffle.name}' has ended!**", view=raffle.view)
         except (discord.NotFound, discord.Forbidden):
             pass
 
-        # Create thread
+        # Create thread for participants
+        channel = raffle.message.channel
         entrants = [channel.guild.get_member(uid) for uid in raffle.entries.keys()]
         thread = await channel.create_thread(
             name=f"{raffle.name} - Entrants",
@@ -270,85 +240,8 @@ class Raffles(commands.Cog):
                 total = raffle.price_per_entry * spots
                 payment_lines.append(f"{member.mention} — {spots} entries — ${total:.2f}")
 
-        payment_msg = await thread.send(
-            "💵 **Payment Summary:**\n" + "\n".join(payment_lines)
-        )
+        payment_msg = await thread.send("💵 **Payment Summary:**\n" + "\n".join(payment_lines))
         raffle.payment_message_id = payment_msg.id
-
-    # -----------------------------
-    # Pick winner
-    # -----------------------------
-    @app_commands.command(name="pick_winner", description="Pick a winner for a finished raffle")
-    @app_commands.describe(name="Raffle name")
-    @app_commands.guilds(discord.Object(id=1406738815854317658))
-    async def pick_winner(self, interaction: discord.Interaction, name: str):
-        member = interaction.user
-        if not any(role.id == ALLOWED_ROLE_ID for role in member.roles):
-            await interaction.response.send_message(
-                "❌ You do not have permission to use this command.", ephemeral=True
-            )
-            return
-        raffle = self.active_raffles.get(name)
-        if not raffle:
-            await interaction.response.send_message("❌ No raffle found.", ephemeral=True)
-            return
-        if not raffle.finished:
-            await interaction.response.send_message("❌ Raffle is still ongoing.", ephemeral=True)
-            return
-        if not raffle.entries:
-            await interaction.response.send_message("❌ No participants.", ephemeral=True)
-            return
-
-        weighted_list = []
-        for uid, spots in raffle.entries.items():
-            weighted_list.extend([uid] * spots)
-        winner_id = random.choice(weighted_list)
-        winner = interaction.guild.get_member(winner_id)
-
-        try:
-            await raffle.thread.send(f"🏆 **The winner of '{raffle.name}' is {winner.mention}!** 🎉")
-        except discord.HTTPException as e:
-            logger.error(f"❌ Failed to announce winner: {e}")
-        await interaction.response.send_message("✅ Winner announced in the raffle thread.", ephemeral=True)
-
-    # -----------------------------
-    # Mark user as paid
-    # -----------------------------
-    @app_commands.command(name="paid", description="Mark a user as having paid for their raffle entries")
-    @app_commands.describe(user="The user who has paid")
-    @app_commands.guilds(discord.Object(id=1406738815854317658))
-    async def paid(self, interaction: discord.Interaction, user: discord.User):
-        member = interaction.user
-        if not any(role.id == ALLOWED_ROLE_ID for role in member.roles):
-            await interaction.response.send_message(
-                "❌ You do not have permission to use this command.", ephemeral=True
-            )
-            return
-        thread = interaction.channel
-        if not isinstance(thread, discord.Thread):
-            await interaction.response.send_message("❌ Use this command in a raffle thread.", ephemeral=True)
-            return
-
-        raffle = next((r for r in self.active_raffles.values() if r.thread and r.thread.id == thread.id), None)
-        if not raffle or not raffle.payment_message_id:
-            await interaction.response.send_message("❌ Could not find raffle payment summary.", ephemeral=True)
-            return
-
-        try:
-            msg = await thread.fetch_message(raffle.payment_message_id)
-            lines = msg.content.split("\n")
-            updated = []
-            for line in lines:
-                if user.mention in line and not line.startswith("✅"):
-                    updated.append("✅ " + line)
-                else:
-                    updated.append(line)
-
-            await msg.edit(content="\n".join(updated))
-            await interaction.response.send_message(f"✅ Marked {user.mention} as paid.", ephemeral=True)
-        except (discord.NotFound, discord.Forbidden, discord.HTTPException) as e:
-            await interaction.response.send_message(f"❌ Failed to update payment message: {e}", ephemeral=True)
-            logger.error(f"Error marking user as paid: {e}")
 
 # -----------------------------
 # Cog setup
