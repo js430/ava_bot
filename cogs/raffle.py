@@ -28,7 +28,7 @@ class Raffle:
         self.message = None  # message with button
     @property
     def total_entries(self):
-        return sum(self.raffle.entries.values())
+        return sum(self.entries.values())
         
 
 
