@@ -34,7 +34,7 @@ class Raffle:
 
     @property
     def time_left(self):
-        delta = self.end_time - datetime.utcnow()
+        delta = self.end_time - datetime.now(timezone.utc)
         if delta.total_seconds() <= 0:
             return "0s"
         minutes, seconds = divmod(int(delta.total_seconds()), 60)
@@ -190,8 +190,8 @@ class Raffles(commands.Cog):
             await asyncio.sleep(5)
             if not raffle.message or not raffle.view:
                 break
+            remaining = raffle.end_time - datetime.now(timezone.utc)
 
-            remaining = raffle.end_time - datetime.utcnow()
             if remaining.total_seconds() <= 0:
                 raffle.finished = True
                 break
@@ -231,8 +231,8 @@ class Raffles(commands.Cog):
         # Start timer updater
         asyncio.create_task(self._update_raffle_timer(raffle))
 
-        # Sleep until raffle ends
-        await asyncio.sleep((raffle.end_time - datetime.utcnow()).total_seconds())
+        # Sleep until raffle endsawait asyncio.sleep((raffle.end_time - datetime.utcnow()).total_seconds())
+        
         raffle.finished = True
 
         # Disable button after end
