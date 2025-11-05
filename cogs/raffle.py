@@ -26,6 +26,10 @@ class Raffle:
         self.thread = None
         self.payment_message_id = None
         self.message = None  # message with button
+    @property
+    def total_entries(self):
+        return sum(self.raffle.entries.values())
+        
 
 
 # -----------------------------
@@ -95,9 +99,7 @@ class Raffles(commands.Cog):
                 if not interaction.response.is_done():
                     await interaction.response.send_message("❌ Something went wrong submitting your entry.", ephemeral=True)
 
-        @property
-        def total_entries(self):
-            return sum(self.raffle.entries.values())
+        
 
     # -----------------------------
     # Button for entering raffle
