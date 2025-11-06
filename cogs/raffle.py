@@ -170,15 +170,15 @@ class Raffles(commands.Cog):
         view.add_item(button)
 
          # ✅ Send the raffle message and store it directly
-        sent_msg = await interaction.response.send_message(
-            f"🎟️ **Raffle '{name}' started!**\n"
-            f"💰 Price per entry: ${price_per_entry:.2f}\n"
-            f"🎫 Total spots: {max_entries}\n"
-            f"👤 Max entries per user: {max_per_user}\n",
-            view=view,
-            wait=True  # Important! wait=True ensures a Message object is returned
-    )
-        raffle.message = sent_msg  # store the actual message for edits
+        await interaction.response.send_message(
+        f"🎟️ **Raffle '{name}' started!**\n"
+        f"💰 Price per entry: ${price_per_entry:.2f}\n"
+        f"🎫 Total spots: {max_entries}\n"
+        f"👤 Max entries per user: {max_per_user}\n",
+        view=view,
+        wait=True  # Important! wait=True ensures a Message object is returned
+        )
+        raffle.message = await interaction.original_response  # store the actual message for edits
         raffle.view = view
 
         # Start raffle timer
