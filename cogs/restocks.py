@@ -583,8 +583,7 @@ class Restocks(commands.Cog):
             for row in rows:
                 time_eastern = row["date"].astimezone(eastern).strftime("%I:%M %p")
                 embed.add_field(
-                    name=f"{row['store_name']} — {row['location']}",
-                    value=f"🕒 {time_eastern}\n📢 Channel: {row['channel_name'] or 'N/A'}",
+                    name=f"{row['store_name'].title()} — {row['location'].title()} at {time_eastern}",
                     inline=False
                 )
 
