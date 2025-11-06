@@ -168,11 +168,10 @@ class Raffles(commands.Cog):
         raffle.view = view
 
         await interaction.response.send_message(
-            f"🎟️ **Raffle '{name}' started!**\n"
+            f":waffle: **Waffle '{name}' started!**\n"
             f"💰 Price per entry: ${price_per_entry:.2f}\n"
             f"🎫 Total spots: {max_entries}\n"
-            f"👤 Max entries per user: {max_per_user}\n"
-            f"⏰ Ends in {raffle.time_left}",
+            f"👤 Max entries per user: {max_per_user}\n",
             view=view
         )
 
