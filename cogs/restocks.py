@@ -436,72 +436,6 @@ class Restocks(commands.Cog):
         except Exception as e:
             logger.error(f"Error sending daily summary: {e}")
 
-    # -----------------------------
-    # Slash Command /summarize
-    # -----------------------------
-    @app_commands.command(
-        name="summarize",
-        description="Show all restocks from a specific date (defaults to today, Eastern Time)."
-    )
-    @app_commands.describe(
-        date="Optional date in YYYY-MM-DD format (defaults to today in Eastern Time)."
-    )
-    async def summarize(self, interaction: discord.Interaction, date: str = None):
-        """Summarize restocks from a given date (defaults to today, Eastern Time)."""
-        eastern = ZoneInfo("America/New_York")
-
-        # Determine the target date
-        if date:
-            try:
-                target_date = datetime.strptime(date, "%Y-%m-%d").date()
-            except ValueError:
-                await interaction.response.send_message(
-                    "❌ Invalid date format! Please use `YYYY-MM-DD`.", ephemeral=True
-                )
-                return
-        else:
-            target_date = datetime.now(eastern).date()
-
-        try:
-            query = """
-                SELECT store_name, location, date, channel_name
-                FROM restock_reports
-                WHERE date::date = $1
-                AND (channel_name IS NULL OR channel_name != 'online-restock-information')
-                ORDER BY date ASC
-            """
-
-            rows = await self.bot.db.fetch(query, target_date)
-
-            if not rows:
-                await interaction.response.send_message(
-                    f"No in-store restocks found for {target_date.strftime('%Y-%m-%d')} (Eastern Time).",
-                    ephemeral=True
-                )
-                return
-
-            embed = discord.Embed(
-                title=f"🧾 Restock Summary for {target_date.strftime('%B %d, %Y')} (Eastern Time)",
-                color=discord.Color.blurple(),
-                timestamp=datetime.now(eastern)
-            )
-
-            for row in rows:
-                time_eastern = row["date"].astimezone(eastern).strftime("%I:%M %p")
-                embed.add_field(
-                    name=f"{row['store_name']} — {row['location']}",
-                    value=f"🕒 {time_eastern}\n📢 Channel: {row['channel_name'] or 'N/A'}",
-                    inline=False
-                )
-
-            await interaction.response.send_message(embed=embed)
-
-        except Exception as e:
-            await interaction.response.send_message(
-                f"⚠️ Error generating summary: {e}",
-                ephemeral=True
-            )
-
 
     async def log_command_use(self, interaction: discord.Interaction, command_name: str):
         LOG_CHANNEL_ID = 1433472852467777711
@@ -594,5 +528,75 @@ class Restocks(commands.Cog):
         f"📍 **{location}** is empty as of **{current_time}**.",
         ephemeral=False
     )
+
+    # -----------------------------
+    # Slash Command /summarize
+    # -----------------------------
+    @app_commands.command(
+        name="summarize",
+        description="Show all restocks from a specific date (defaults to today, Eastern Time)."
+    )
+    @app_commands.describe(
+        date="Optional date in YYYY-MM-DD format (defaults to today in Eastern Time)."
+    )
+    @app_commands.guilds(discord.Object(id=1406738815854317658))
+    async def summarize(self, interaction: discord.Interaction, date: str = None):
+        """Summarize restocks from a given date (defaults to today, Eastern Time)."""
+        eastern = ZoneInfo("America/New_York")
+
+        # Determine the target date
+        if date:
+            try:
+                target_date = datetime.strptime(date, "%Y-%m-%d").date()
+            except ValueError:
+                await interaction.response.send_message(
+                    "❌ Invalid date format! Please use `YYYY-MM-DD`.", ephemeral=True
+                )
+                return
+        else:
+            target_date = datetime.now(eastern).date()
+
+        try:
+            query = """
+                SELECT store_name, location, date, channel_name
+                FROM restock_reports
+                WHERE date::date = $1
+                AND (channel_name IS NULL OR channel_name != 'online-restock-information')
+                ORDER BY date ASC
+            """
+
+            rows = await self.bot.db.fetch(query, target_date)
+
+            if not rows:
+                await interaction.response.send_message(
+                    f"No in-store restocks found for {target_date.strftime('%Y-%m-%d')} (Eastern Time).",
+                    ephemeral=True
+                )
+                return
+
+            embed = discord.Embed(
+                title=f"🧾 Restock Summary for {target_date.strftime('%B %d, %Y')} (Eastern Time)",
+                color=discord.Color.blurple(),
+                timestamp=datetime.now(eastern)
+            )
+
+            for row in rows:
+                time_eastern = row["date"].astimezone(eastern).strftime("%I:%M %p")
+                embed.add_field(
+                    name=f"{row['store_name']} — {row['location']}",
+                    value=f"🕒 {time_eastern}\n📢 Channel: {row['channel_name'] or 'N/A'}",
+                    inline=False
+                )
+
+            await interaction.response.send_message(embed=embed)
+
+        except Exception as e:
+            await interaction.response.send_message(
+                f"⚠️ Error generating summary: {e}",
+                ephemeral=True
+            )
+
+
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(Restocks(bot))
