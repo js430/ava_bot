@@ -175,8 +175,7 @@ class Raffles(commands.Cog):
             f"🎟️ **Raffle '{name}' started!**\n"
             f"💰 Price per entry: ${price_per_entry:.2f}\n"
             f"🎫 Total spots: {max_entries}\n"
-            f"👤 Max entries per user: {max_per_user}\n"
-            f"⏰ Ends in {raffle.time_left}",
+            f"👤 Max entries per user: {max_per_user}\n",
             view=view
         )
         raffle.message = await interaction.original_response()
