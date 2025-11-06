@@ -574,20 +574,19 @@ class Restocks(commands.Cog):
                 )
                 return
 
+            summary_lines = []
+            for row in rows:
+                store = row["store_name"].title()
+                location = row["location"].title()
+                restock_time = row["date"].astimezone(eastern).strftime("%I:%M %p")  # 12-hour format
+                summary_lines.append(f"**{store}** — {location} at {restock_time}")
+
             embed = discord.Embed(
-                title=f"🧾 Restock Summary for {target_date.strftime('%B %d, %Y')} (Eastern Time)",
+                title=f"📦 Restock Summary — {target_date.strftime('%B %d, %Y')}",
+                description="\n".join(summary_lines),
                 color=discord.Color.blurple(),
                 timestamp=datetime.now(eastern)
             )
-
-            for row in rows:
-                time_eastern = row["date"].astimezone(eastern).strftime("%I:%M %p")
-                embed.add_field(
-                    name=f"{row['store_name'].title()} — {row['location'].title()}",
-                    value=f'{time_eastern}',
-                    inline=True
-                )
-
             await interaction.response.send_message(embed=embed)
 
         except Exception as e:
