@@ -6,6 +6,8 @@ from zoneinfo import ZoneInfo
 import asyncio
 from collections import defaultdict
 import logging
+import asyncpg
+import os
 
 logger = logging.getLogger("restocks")
 #VARIABLES
@@ -77,6 +79,7 @@ location_links={"reston_target":"https://maps.app.goo.gl/AzGn3V5ES1sUyP2M7",
               
 }
 
+DATABASE_URL = os.getenv("DATABASE_URL")
 SUMMARY_CHANNEL_ID = 1431090547606687804  # 👈 Replace with your channel ID
 SUMMARY_HOUR = 22  # 24-hour format (22 = 10 PM Eastern)
 
@@ -369,10 +372,22 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
 
 # ---------------- COG ----------------
 class Restocks(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.pool = None
+        self.bot.loop.create_task(self.init_db())
         self.daily_summary_task.start()
 
+    async def init_db(self):
+        """Initialize asyncpg connection pool using Railway DATABASE_URL"""
+        try:
+            self.pool = await asyncpg.create_pool(DATABASE_URL)
+            logger.info("✅ Database pool initialized (Railway).")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize database pool: {e}")
+      # -----------------------------
+    # Daily Summary Task
+    # -----------------------------
     @tasks.loop(minutes=1)
     async def daily_summary_task(self):
         eastern = ZoneInfo("America/New_York")
@@ -383,66 +398,58 @@ class Restocks(commands.Cog):
                 await self.send_daily_summary(channel)
 
     async def send_daily_summary(self, channel: discord.TextChannel):
-        """Send a daily summary of restocks from restock_reports table"""
-        eastern = ZoneInfo("America/New_York")
-        today_str = date.today().strftime("%Y-%m-%d")
+        """Fetch restocks from the database and send a summary embed."""
+        if not self.pool:
+            logger.error("Database pool is not initialized.")
+            return
 
+        today = date.today()  # asyncpg expects date object
         try:
-            # Fetch today's restock reports
-            query = """
-                SELECT store_name, location, user_id, date
-                FROM restock_reports
-                WHERE date::date = $1
-                ORDER BY store_name ASC, location ASC
-            """
-            rows = await self.bot.db.fetch(query, today_str)
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """
+                    SELECT store_name, product_name, quantity, restock_time
+                    FROM restock_reports
+                    WHERE restock_date = $1
+                    ORDER BY restock_time ASC
+                    """,
+                    today
+                )
+
             if not rows:
-                embed = discord.Embed(
-                    title="📅 Daily Summary",
-                    description=f"No restocks were reported on {today_str}.",
-                    color=discord.Color.red(),
-                    timestamp=datetime.now(eastern)
-                )
-                await channel.send(embed=embed)
-                return
+                description = f"No restocks reported for {today.strftime('%Y-%m-%d')}."
+            else:
+                description = ""
+                for row in rows:
+                    restock_time = row["restock_time"].strftime("%H:%M") if row["restock_time"] else "Unknown"
+                    description += f"**{row['store_name']}** — {row['product_name']} x{row['quantity']} at {restock_time}\n"
 
-            # Group by store
-            store_data = {}
-            for store, product_type, reporter, timestamp in rows:
-                store_data.setdefault(store, []).append((product_type, reporter, timestamp))
-
-            # Build embed
             embed = discord.Embed(
-                title="📦 Daily Restock Summary",
-                description=f"Summary for {today_str}",
+                title="📅 Daily Restock Summary",
+                description=description,
                 color=discord.Color.blurple(),
-                timestamp=datetime.now(eastern)
+                timestamp=datetime.now(tz=ZoneInfo("America/New_York"))
             )
-
-            for store, reports in store_data.items():
-                lines = []
-                for product_type, reporter, timestamp in reports:
-                    local_time = datetime.fromisoformat(timestamp).astimezone(eastern)
-                    lines.append(f"🕒 `{local_time.strftime('%I:%M %p')}` — **{product_type}** *(by {reporter})*")
-                embed.add_field(
-                    name=f"🏬 {store}",
-                    value="\n".join(lines[:20]),  # limit to 20 lines per store
-                    inline=False
-                )
-
-            embed.set_footer(text="Restock data automatically compiled from reports")
-
             await channel.send(embed=embed)
-            logger.info(f"✅ Sent daily restock summary for {today_str}")
 
         except Exception as e:
             logger.error(f"Error sending daily summary: {e}")
-            error_embed = discord.Embed(
-                title="⚠️ Error Generating Summary",
-                description=f"An error occurred: `{e}`",
-                color=discord.Color.red()
-            )
-            await channel.send(embed=error_embed)
+
+    # -----------------------------
+    # Slash Command /summarize
+    # -----------------------------
+    @app_commands.command(name="summarize", description="Send today's restock summary immediately")
+    @app_commands.guilds(discord.Object(id=1406738815854317658))  # replace with your guild ID
+    async def summarize(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        channel = interaction.channel
+        if not isinstance(channel, discord.TextChannel):
+            await interaction.followup.send("❌ This command can only be used in a text channel.", ephemeral=True)
+            return
+
+        await self.send_daily_summary(channel)
+        await interaction.followup.send("✅ Daily summary sent!", ephemeral=True)
+
 
     async def log_command_use(self, interaction: discord.Interaction, command_name: str):
         LOG_CHANNEL_ID = 1433472852467777711
