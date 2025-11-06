@@ -385,7 +385,7 @@ class Restocks(commands.Cog):
             logger.info("✅ Database pool initialized (Railway).")
         except Exception as e:
             logger.error(f"❌ Failed to initialize database pool: {e}")
-      # -----------------------------
+    # -----------------------------
     # Daily Summary Task
     # -----------------------------
     @tasks.loop(minutes=1)
@@ -400,18 +400,19 @@ class Restocks(commands.Cog):
     async def send_daily_summary(self, channel: discord.TextChannel):
         """Fetch restocks from the database and send a summary embed."""
         if not self.pool:
-            logger.error("Database pool is not initialized.")
+            logger.error("Database pool not initialized.")
             return
 
-        today = date.today()  # asyncpg expects date object
+        today = date.today()
         try:
             async with self.pool.acquire() as conn:
                 rows = await conn.fetch(
                     """
-                    SELECT store_name, product_name, quantity, restock_time
+                    SELECT store_name, location, date, channel_name
                     FROM restock_reports
-                    WHERE restock_date = $1
-                    ORDER BY restock_time ASC
+                    WHERE date::date = $1
+                    AND channel_name != "online-restock-information"
+                    ORDER BY date ASC
                     """,
                     today
                 )
