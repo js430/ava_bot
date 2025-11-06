@@ -422,8 +422,8 @@ class Restocks(commands.Cog):
             else:
                 description = ""
                 for row in rows:
-                    restock_time = row["restock_time"].strftime("%H:%M") if row["restock_time"] else "Unknown"
-                    description += f"**{row['store_name']}** — {row['product_name']} x{row['quantity']} at {restock_time}\n"
+                    restock_time = row["date"].strftime("%H:%M") if row["date"] else "Unknown"
+                    description += f"**{row['store_name']}** {row['location']} at {restock_time}\n"
 
             embed = discord.Embed(
                 title="📅 Daily Restock Summary",
