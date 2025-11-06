@@ -583,8 +583,9 @@ class Restocks(commands.Cog):
             for row in rows:
                 time_eastern = row["date"].astimezone(eastern).strftime("%I:%M %p")
                 embed.add_field(
-                    name=f"{row['store_name'].title()} — {row['location'].title()} at {time_eastern}",
-                    inline=False
+                    name=f"{row['store_name'].title()} — {row['location'].title()}",
+                    field=f'{time_eastern}',
+                    inline=True
                 )
 
             await interaction.response.send_message(embed=embed)
