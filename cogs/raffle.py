@@ -168,21 +168,64 @@ class Raffles(commands.Cog):
         view = discord.ui.View()
         button = self.EnterRaffleButton(raffle, view)
         view.add_item(button)
-        raffle.view = view
 
-        # Send the raffle message via the interaction
-        await interaction.response.send_message(
+         # ✅ Send the raffle message and store it directly
+        sent_msg = await interaction.response.send_message(
             f"🎟️ **Raffle '{name}' started!**\n"
             f"💰 Price per entry: ${price_per_entry:.2f}\n"
             f"🎫 Total spots: {max_entries}\n"
             f"👤 Max entries per user: {max_per_user}\n",
-            view=view
-        )
-        raffle.message = await interaction.original_response()
+            view=view,
+            wait=True  # Important! wait=True ensures a Message object is returned
+    )
+        raffle.message = sent_msg  # store the actual message for edits
+        raffle.view = view
 
-        # Start the live timer
-        asyncio.create_task(self._raffle_timer(raffle))
+        # Start raffle timer
+        asyncio.create_task(self._raffle_timer(interaction.channel, raffle))
 
+    @app_commands.command(name="pick_winner", description="Pick a winner for a finished raffle")
+    @app_commands.describe(name="Raffle name")
+    @app_commands.guilds(discord.Object(id=1406738815854317658))
+    async def pick_winner(self, interaction: discord.Interaction, name: str):
+        member = interaction.user
+        if not any(role.id == ALLOWED_ROLE_ID for role in member.roles):
+            await interaction.response.send_message(
+                "❌ You do not have permission to use this command.", ephemeral=True
+            )
+            return
+
+        raffle = self.active_raffles.get(name)
+        if not raffle:
+            await interaction.response.send_message("❌ No raffle found.", ephemeral=True)
+            return
+
+        if not raffle.finished:
+            await interaction.response.send_message("❌ Raffle is still ongoing.", ephemeral=True)
+            return
+
+        if not raffle.entries:
+            await interaction.response.send_message("❌ No participants.", ephemeral=True)
+            return
+
+        # Build weighted list for picking a winner based on spots entered
+        weighted_list = []
+        for user_id, spots in raffle.entries.items():
+            weighted_list.extend([user_id] * spots)
+
+        winner_id = random.choice(weighted_list)
+        winner = interaction.guild.get_member(winner_id)
+        if not winner:
+            await interaction.response.send_message("❌ Could not find the winner in the server.", ephemeral=True)
+            return
+
+        try:
+            await raffle.thread.send(f"🏆 **The winner of '{raffle.name}' is {winner.mention}!** 🎉")
+        except discord.HTTPException as e:
+            await interaction.response.send_message(f"❌ Failed to announce winner: {e}", ephemeral=True)
+            return
+
+        await interaction.response.send_message("✅ Winner announced in the raffle thread.", ephemeral=True)
     # -----------------------------
     # Live raffle timer
     # -----------------------------
@@ -232,8 +275,7 @@ class Raffles(commands.Cog):
             if member:
                 await thread.add_user(member)
          # Add all members with a specific role
-        ROLE_TO_ADD = 1406753334051737631  # Change this to the role you want to include
-        role = guild.get_role(ROLE_TO_ADD)
+        role = guild.get_role(ALLOWED_ROLE_ID)
         if role:
             for member in role.members:
                 if member and member not in entrants:
