@@ -403,7 +403,7 @@ class Restocks(commands.Cog):
             logger.error("Database pool not initialized.")
             return
 
-        today = date.today(ZoneInfo("America/New_York"))
+        today = datetime.now(ZoneInfo("America/New_York")).date()
         try:
             async with self.pool.acquire() as conn:
                 rows = await conn.fetch(
