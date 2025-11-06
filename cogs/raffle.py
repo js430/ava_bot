@@ -220,6 +220,7 @@ class Raffles(commands.Cog):
 
         # Create thread for participants
         channel = raffle.message.channel
+        guild=channel.guild
         entrants = [channel.guild.get_member(uid) for uid in raffle.entries.keys()]
         thread = await channel.create_thread(
             name=f"{raffle.name} - Entrants",
@@ -230,6 +231,13 @@ class Raffles(commands.Cog):
         for member in entrants:
             if member:
                 await thread.add_user(member)
+         # Add all members with a specific role
+        ROLE_TO_ADD = 1406753334051737631  # Change this to the role you want to include
+        role = guild.get_role(ROLE_TO_ADD)
+        if role:
+            for member in role.members:
+                if member and member not in entrants:
+                    await thread.add_user(member)
 
         # Payment summary
         payment_lines = []
