@@ -399,6 +399,7 @@ class Restocks(commands.Cog):
 
     async def send_daily_summary(self, channel: discord.TextChannel):
         """Fetch restocks from the database and send a summary embed."""
+        eastern = ZoneInfo("America/New_York")
         if not self.pool:
             logger.error("Database pool not initialized.")
             return
@@ -419,17 +420,18 @@ class Restocks(commands.Cog):
 
             if not rows:
                 description = f"No restocks reported for {today.strftime('%Y-%m-%d')}."
-            else:
-                description = ""
-                for row in rows:
-                    restock_time = row["date"].strftime("%H:%M") if row["date"] else "Unknown"
-                    description += f"**{row['store_name']}** {row['location']} at {restock_time}\n"
+            summary_lines = []
+            for row in rows:
+                store = row["store_name"].title()
+                location = row["location"].title()
+                restock_time = row["date"].astimezone(eastern).strftime("%I:%M %p")  # 12-hour format
+                summary_lines.append(f"**{store}** — {location} at {restock_time}")
 
             embed = discord.Embed(
-                title="📅 Daily Restock Summary",
-                description=description,
+                title=f"📦 Restock Summary — {today.strftime('%B %d, %Y')}",
+                description="\n".join(summary_lines),
                 color=discord.Color.blurple(),
-                timestamp=datetime.now(tz=ZoneInfo("America/New_York"))
+                timestamp=datetime.now(eastern)
             )
             await channel.send(embed=embed)
 
