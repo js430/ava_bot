@@ -208,7 +208,7 @@ class LocationButton(discord.ui.Button):
             if channel and isinstance(channel, discord.TextChannel):
                 sent_message = await channel.send(content=f"{self.location} {self.store_choice} {mentions}")
 
-                today_date = date.today()
+                today_date = datetime.now(ZoneInfo("America/New_York")).date()
                 formatted = f"{today_date.strftime('%A %B')} {today_date.day}"
                 thread_name = f"{formatted}: {self.location.title()} {self.store_choice.title()} Restock"
 
@@ -286,18 +286,10 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
 
         # Determine channels and roles based on location
         if not TEST:
-            if loc_key in nova:
-                channel_ids.append(alert_channels.get("nova"))
-                role_ids.extend([role_pings.get("nova"), role_pings.get(store_key)])
-            elif loc_key in notsonova:
-                channel_ids.append(alert_channels.get("nova"))
-                role_ids.extend([role_pings.get("notsonova"), role_pings.get(store_key)])
-            elif loc_key in maryland:
-                channel_ids.append(alert_channels.get("md"))
-                role_ids.extend([role_pings.get("maryland"), role_pings.get(store_key)])
-            elif loc_key in dc:
-                channel_ids.append(alert_channels.get("dc"))
-                role_ids.extend([role_pings.get("dc"), role_pings.get(store_key)])
+            if interaction.channel.id==1407118323749224531:
+                role_ids.extend([role_pings.get("nova"),role_pings.get("notsonova")])
+            elif interaction.channel.id==1407118364215611574:
+                role_ids.extend([role_pings.get("maryland")])
 
         # Fallbacks
         channel_ids = [cid for cid in channel_ids if cid is not None]
@@ -330,7 +322,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
             if channel and isinstance(channel, discord.TextChannel):
                 sent_message = await channel.send(content=f"{custom_location} {self.store_choice} {mentions}")
 
-                today_date = date.today()
+                today_date = datetime.now(ZoneInfo("America/New_York")).date()
                 formatted = f"{today_date.strftime('%A %B')} {today_date.day}"
                 thread_name = f"{formatted}: {custom_location.title()} {self.store_choice.title()} Restock"
 
