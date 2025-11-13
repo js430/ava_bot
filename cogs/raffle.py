@@ -8,6 +8,7 @@ class Raffle(commands.Cog):
         self.active_raffles = {}
 
     @app_commands.command(name="startraffle", description="Start a raffle with entries and cost.")
+    @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def startraffle(self, interaction: discord.Interaction, name: str, max_entries: int, max_entries_per_user: int, cost_per_entry: float):
         await interaction.response.defer()
 
@@ -140,6 +141,7 @@ class Raffle(commands.Cog):
         await msg.edit(embed=embed)
 
     @app_commands.command(name="finalizeraffle", description="Close raffle and send owed amounts.")
+    @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def finalizeraffle(self, interaction: discord.Interaction, message_id: str):
         message_id = int(message_id)
         if message_id not in self.active_raffles:
