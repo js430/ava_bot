@@ -8,8 +8,7 @@ class Raffle(commands.Cog):
         self.active_raffles = {}
 
     @app_commands.command(name="startraffle", description="Start a raffle with entries and cost.")
-    @app_commands.guilds(discord.Object(id=1406738815854317658))
-    async def startraffle(self, interaction: discord.Interaction, name: str, max_entries: int, cost_per_entry: float):
+    async def startraffle(self, interaction: discord.Interaction, name: str, max_entries: int, max_entries_per_user: int, cost_per_entry: float):
         await interaction.response.defer()
 
         # Create private thread
@@ -22,6 +21,7 @@ class Raffle(commands.Cog):
         raffle_data = {
             "name": name,
             "max_entries": max_entries,
+            "max_entries_per_user": max_entries_per_user,
             "cost_per_entry": cost_per_entry,
             "thread": thread,
             "entries": {},  # user_id: entry_count
@@ -31,7 +31,8 @@ class Raffle(commands.Cog):
 
         # Create embed
         embed = discord.Embed(title=f"Raffle: {name}", color=discord.Color.green())
-        embed.add_field(name="Max Entries", value=max_entries)
+        embed.add_field(name="Max Entries (Total)", value=max_entries)
+        embed.add_field(name="Max Entries Per User", value=max_entries_per_user)
         embed.add_field(name="Cost Per Entry", value=f"${cost_per_entry:.2f}")
         embed.add_field(name="Remaining Entries", value=max_entries)
         embed.set_footer(text="React below to enter. Unreact to remove your entry.")
@@ -81,10 +82,15 @@ class Raffle(commands.Cog):
         # Determine entry count
         entry_count = raffle["reactions"].index(emoji) + 1
 
-        # Check available entries
+        # Check per-user limit
+        if entry_count > raffle["max_entries_per_user"]:
+            await member.send(f"You can only enter up to {raffle['max_entries_per_user']} entries in '{raffle['name']}'.")
+            await message.remove_reaction(emoji, member)
+            return
+
+        # Check total remaining entries
         total_used = sum(raffle["entries"].values())
         remaining = raffle["max_entries"] - total_used
-
         if entry_count > remaining:
             await member.send(f"Cannot enter raffle '{raffle['name']}' for {entry_count} entries — only {remaining} remaining.")
             await message.remove_reaction(emoji, member)
@@ -134,7 +140,6 @@ class Raffle(commands.Cog):
         await msg.edit(embed=embed)
 
     @app_commands.command(name="finalizeraffle", description="Close raffle and send owed amounts.")
-    @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def finalizeraffle(self, interaction: discord.Interaction, message_id: str):
         message_id = int(message_id)
         if message_id not in self.active_raffles:
