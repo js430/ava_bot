@@ -82,6 +82,7 @@ class RaffleCog(commands.Cog):
         max_entries="Total max entries the raffle allows",
         max_entries_per_user="Max entries 1 user can claim"
     )
+    @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def raffle_start(
         self,
         interaction: discord.Interaction,
@@ -143,6 +144,7 @@ class RaffleCog(commands.Cog):
 
     @app_commands.command(name="raffle_finalize", description="Finalize the raffle and post the results.")
     @app_commands.describe(message_id="The ID of the raffle message to finalize")
+    @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def raffle_finalize(self, interaction: discord.Interaction, message_id: str):
         try:
             message_id = int(message_id)
