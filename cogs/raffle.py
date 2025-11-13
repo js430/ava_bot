@@ -137,6 +137,13 @@ class Raffle(commands.Cog):
         embed.add_field(name="Max Entries", value=raffle["max_entries"])
         embed.add_field(name="Cost Per Entry", value=f"${raffle['cost_per_entry']:.2f}")
         embed.add_field(name="Remaining Entries", value=remaining)
+        embed.set_footer(text="React below to enter. Unreact to remove your entry.")
+        
+        
+        
+
+        
+
 
         await msg.edit(embed=embed)
 
