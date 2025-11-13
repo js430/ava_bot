@@ -190,7 +190,7 @@ class LocationButton(discord.ui.Button):
         if self.command_name != "test_restock":
             mentions = " ".join(f"<@&{rid}>" for rid in role_ids) + ". "
         else:
-            mentions = f"TEST: IGNORE Alerted by: {interaction.user.display_name}, {interaction.user.id}"
+            mentions = f"TEST: IGNORE Alerted"
 
         # Respond to the user immediately
         await interaction.response.send_message(
@@ -228,7 +228,7 @@ class LocationButton(discord.ui.Button):
         if location_key in location_links:
             desc = f"Restock at {self.store_choice.title()} in **{self.location.title()}**. [Google maps]({location_links.get(location_key)})"
         else:
-            desc = f"Restock at {self.store_choice.title()} in **{self.location.title()}**. Reported by {interaction.user.display_name}"
+            desc = f"Restock at {self.store_choice.title()} in **{self.location.title()}**."
 
         await thread.send(desc)
 
@@ -342,7 +342,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
         if location_key in location_links:
             desc = f"Restock at {self.store_choice.title()} in **{custom_location.title()}**. [Google maps]({location_links.get(location_key)})"
         else:
-            desc = f"Restock at {self.store_choice.title()} in **{custom_location.title()}**. Reported by {interaction.user.display_name}"
+            desc = f"Restock at {self.store_choice.title()} in **{custom_location.title()}**."
 
         await thread.send(desc)
 
@@ -487,7 +487,6 @@ class Restocks(commands.Cog):
         mentions = " ".join(f"<@&{role_pings.get(r.value)}>" for r in chosen_roles if r.value in role_pings)
 
         embed = discord.Embed(title="Info", description=message, color=discord.Color.blue())
-        embed.set_footer(text=f"Sent by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(f"{mentions}", embed=embed)
 
     @app_commands.command(
