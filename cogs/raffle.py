@@ -31,7 +31,7 @@ class Raffle(commands.Cog):
         }
 
         # Create embed
-        embed = discord.Embed(title=f"Raffle: {name}", color=discord.Color.green())
+        embed = discord.Embed(title=f":waffle: Waffle: {name}", color=discord.Color.green())
         embed.add_field(name="Max Entries (Total)", value=max_entries)
         embed.add_field(name="Max Entries Per User", value=max_entries_per_user)
         embed.add_field(name="Cost Per Entry", value=f"${cost_per_entry:.2f}")
@@ -133,7 +133,7 @@ class Raffle(commands.Cog):
         total_used = sum(raffle["entries"].values())
         remaining = raffle["max_entries"] - total_used
 
-        embed = discord.Embed(title=f"Raffle: {raffle['name']}", color=discord.Color.green())
+        embed = discord.Embed(title=f":waffle: Waffle: {raffle['name']}", color=discord.Color.green())
         embed.add_field(name="Max Entries", value=raffle["max_entries"])
         embed.add_field(name="Cost Per Entry", value=f"${raffle['cost_per_entry']:.2f}")
         embed.add_field(name="Remaining Entries", value=remaining)
