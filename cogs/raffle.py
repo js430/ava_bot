@@ -10,7 +10,8 @@ class Raffle(commands.Cog):
     @app_commands.command(name="startraffle", description="Start a raffle with entries and cost.")
     @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def startraffle(self, interaction: discord.Interaction, name: str, max_entries: int, max_entries_per_user: int, cost_per_entry: float):
-        await interaction.response.defer()
+        await interaction.response.send_message("Raffle created!", ephemeral=True)
+
 
         # Create private thread
         thread = await interaction.channel.create_thread(
@@ -38,7 +39,7 @@ class Raffle(commands.Cog):
         embed.add_field(name="Remaining Entries", value=max_entries)
         embed.set_footer(text="React below to enter. Unreact to remove your entry.")
 
-        msg = await interaction.followup.send(embed=embed, wait=True)
+        msg = await interaction.channel.send(embed=embed)
         raffle_data["message"] = msg
 
         # Add reactions for each possible entry count (1 to max_entries)
