@@ -163,6 +163,8 @@ class Raffle(commands.Cog):
             lines.append(f"<@{user_id}> — {entries} entries — owes **${cost:.2f}**")
 
         await raffle["thread"].send("\n".join(lines))
+        await interaction.response.send_message("Raffle finalized!", ephemeral=True)
+
 
 async def setup(bot):
     await bot.add_cog(Raffle(bot))
