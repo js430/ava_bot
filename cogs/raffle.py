@@ -153,7 +153,7 @@ class Raffle(commands.Cog):
         raffle = self.active_raffles.pop(message_id)
 
         lines = ["Raffle Finalized!", f"**{raffle['name']}**", ""]
-        dm=""
+        dm=[]
         for user_id, entries in raffle["entries"].items():
             cost = entries * raffle["cost_per_entry"]
             lines.append(f"<@{user_id}> — {entries} entries — owes **${cost:.2f}**")
