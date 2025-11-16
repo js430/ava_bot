@@ -159,8 +159,9 @@ class Raffle(commands.Cog):
             lines.append(f"<@{user_id}> — {entries} entries — owes **${cost:.2f}**")
             user = await interaction.client.fetch_user(user_id)
             dm.append(f"{user.display_name}")
-        await interaction.user.send("\n".join(dm))
+       
         await raffle["thread"].send("\n".join(lines))
+        await raffle["thread"].send("\n".join(dm))
         await interaction.response.send_message("Raffle finalized!", ephemeral=True)
 
 
