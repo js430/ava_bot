@@ -140,12 +140,6 @@ class Raffle(commands.Cog):
         embed.add_field(name="Remaining Entries", value=remaining)
         embed.set_footer(text="React below to enter. Unreact to remove your entry.")
         
-        
-        
-
-        
-
-
         await msg.edit(embed=embed)
 
     @app_commands.command(name="finalizeraffle", description="Close raffle and send owed amounts.")
@@ -159,10 +153,12 @@ class Raffle(commands.Cog):
         raffle = self.active_raffles.pop(message_id)
 
         lines = ["Raffle Finalized!", f"**{raffle['name']}**", ""]
+        dm=""
         for user_id, entries in raffle["entries"].items():
             cost = entries * raffle["cost_per_entry"]
             lines.append(f"<@{user_id}> — {entries} entries — owes **${cost:.2f}**")
-
+            dm.append(f"{interaction.client.fetch_user(user_id)}")
+        await interaction.user.send("\n".join(dm))
         await raffle["thread"].send("\n".join(lines))
         await interaction.response.send_message("Raffle finalized!", ephemeral=True)
 
