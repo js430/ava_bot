@@ -403,7 +403,7 @@ class Restocks(commands.Cog):
                     """
                     SELECT store_name, location, date, channel_name
                     FROM restock_reports
-                    WHERE date::date = $1
+                    WHERE (date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York')::date = $1
                     AND (channel_name IS NULL OR channel_name != 'online-restock-information')
                     ORDER BY date ASC
                 """,
