@@ -18,7 +18,7 @@ if not TEST:
     alert_channels={"nova": 1407118323749224531, "notsonova":1407118323749224531, "md": 1407118364215611574, "general": 1406755535599964261, "dc": 1407118410898210928}
     role_pings={"nova":1406765992658341908, "notsonova":1406766138163200091, "maryland":1406766061012910191, "target":1406754673100193883, "bestbuy":1406760883023118569, "walmart":1406754750778572831, "dc": 1406765925281304659}
     nova=['reston', 'fairlakes', 'fl', 'skyline', '7c', '7corners', 'skyline', 'mosaic', 'chantilly', 'dulles', 'ashburn', 'burke', 'springfield', 'gainesville', 'manassas', 'hyblavalley', 'hybla', 'potomacyard', 'py'
-        'leesburg', 'southriding', 'pc', 'fallschurch', 'tysons', 'arlington', 'alexandria', 'sterling/pr', 'springfield', 'southriding']
+        'leesburg', 'southriding', 'pc', 'fallschurch', 'tysons', 'arlington', 'alexandria', 'sterling/pr', 'springfield', 'southriding', 'kingstowne']
     notsonova=['woodbridge','dumfries', 'winchester', 'leesburg']
     maryland=['frederick', 'gaithersburg', 'rockville', 'bethesda']
     dc=['connecticutave', 'connave', '14st', '14thst', 'nyave', 'newyorkave', 'wisconsinave', 'wisconsinavenue', 'georgiaave']
@@ -138,7 +138,7 @@ class LocationChoiceView(discord.ui.View):
         self.cog = cog
 
         # Example locations, can extend
-        locations = ["Fair Lakes", "Springfield", "Reston", "7C","Chantilly", "Mosaic", "South Riding", "Potomac Yard", "Sterling/PR", "Ashburn", "Gainesville", "Burke", "Manassas", "Leesburg", "Woodbridge", "Tysons"]
+        locations = ["Fair Lakes", "Springfield", "Reston", "7C","Chantilly", "Mosaic", "South Riding", "Potomac Yard", "Sterling/PR", "Ashburn", "Kingstowne", "Gainesville", "Burke", "Manassas", "Leesburg", "Woodbridge", "Tysons"]
 
         for location in locations:
             self.add_item(LocationButton(location, store_choice, self.command_name, self.cog))
