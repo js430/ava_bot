@@ -128,7 +128,25 @@ class Database(commands.Cog):
             )
             logger.error(f"❌ Failed to insert manual restock: {e}")
 
+    # @app_commands.command(
+    #     name="query",
+    #     description="queries database"
+    # )
+    # @app_commands.guilds(discord.Object(id=1406738815854317658))  # guild-specific
+    # async def query(
+    #     self,
+    #     id
+    # ):
+    #     query = """
+    #             SELECT store_name, location, date, channel_name
+    #             FROM restock_reports
+    #             WHERE date::date = $1
+    #             AND (channel_name IS NULL OR channel_name != 'online-restock-information')
+    #             ORDER BY date ASC
+    #         """
 
+    #         rows = await self.bot.db.fetch(query)
+        
 async def setup(bot: commands.Bot):
     """Required setup function for the cog loader."""
     await bot.add_cog(Database(bot))
