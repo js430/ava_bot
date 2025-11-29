@@ -532,7 +532,8 @@ class Restocks(commands.Cog):
         mentions = " ".join(f"<@&{role_pings.get(r.value)}>" for r in chosen_roles if r.value in role_pings)
 
         embed = discord.Embed(title="Info", description=message, color=discord.Color.blue())
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
+        await interaction.follow.up.send("Success", ephemeral=True)
         await interaction.channel.send(f"{mentions}", embed=embed)
 
     @app_commands.command(
@@ -563,7 +564,8 @@ class Restocks(commands.Cog):
             logger.error(f"❌ Failed to log /empty usage: {e}")
 
         # Send confirmation message
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
+        await interaction.follow.up.send("Success", ephemeral=True)
         await interaction.channel.send(
         f"📍 **{location}** is empty as of **{current_time}**.")
 
