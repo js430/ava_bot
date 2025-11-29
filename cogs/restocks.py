@@ -563,7 +563,8 @@ class Restocks(commands.Cog):
             logger.error(f"❌ Failed to log /empty usage: {e}")
 
         # Send confirmation message
-        await interaction.response.send_message(
+        await interaction.response.defer()
+        await interaction.channel.send(
         f"📍 **{location}** is empty as of **{current_time}**.",
         ephemeral=False
     )
