@@ -362,6 +362,51 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
             except Exception as e:
                 logger.error(f"❌ Failed to log restock report: {e}")
 
+class QueryModal(discord.ui.Modal, title="Query Information"):
+    def __init__(self, bot):
+        super().__init__()
+        self.bot = bot
+
+        self.field1 = discord.ui.InputText(
+            label="What store would you like information for?",
+            placeholder="Enter value..."
+        )
+        self.add_item(self.field1)
+
+        self.field2 = discord.ui.InputText(
+            label="Which location?",
+            placeholder="Enter value..."
+        )
+        self.add_item(self.field2)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        user_input_1 = self.field1.value
+        user_input_2 = self.field2.value
+
+        # Run database query
+        row = await self.bot.db.fetchrow("""
+            SELECT * FROM restock_reports
+            WHERE store_name = $1 AND location = $2
+        """, user_input_1, user_input_2)
+
+        # DM results
+        if row:
+            await interaction.user.send(f"Your query result:\n```\n{dict(row)}\n```")
+        else:
+            await interaction.user.send("No results found.")
+
+        await interaction.response.send_message(
+            "Check your DMs — I sent your result!", ephemeral=True
+        )
+class PermanentEmbedView(discord.ui.View):
+    def __init__(self, bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+
+    @discord.ui.button(label="Get historic restock information", style=discord.ButtonStyle.primary)
+    async def run_query(self, interaction: discord.Interaction, button: discord.ui.Button):
+        modal = QueryModal(self.bot)
+        await interaction.response.send_modal(modal)
 # ---------------- COG ----------------
 class Restocks(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -487,7 +532,8 @@ class Restocks(commands.Cog):
         mentions = " ".join(f"<@&{role_pings.get(r.value)}>" for r in chosen_roles if r.value in role_pings)
 
         embed = discord.Embed(title="Info", description=message, color=discord.Color.blue())
-        await interaction.response.send_message(f"{mentions}", embed=embed)
+        await interaction.response.defer()
+        await interaction.channel.send_message(f"{mentions}", embed=embed)
 
     @app_commands.command(
     name="empty",
@@ -588,6 +634,50 @@ class Restocks(commands.Cog):
                 ephemeral=True
             )
 
+
+    # @app_commands.command()
+    # @app_commands.has_permissions(administrator=True)
+    # @app_commands.guilds(discord.Object(id=1406738815854317658))
+    # async def create_permanent_embed(self, ctx):
+    #     embed = discord.Embed(
+    #         title="Lookup restock information",
+    #         description="Press the button to retrieve the info you would like.",
+    #         color=discord.Color.blue()
+    #     )
+
+    #     msg = await ctx.send(embed=embed, view=PermanentEmbedView(self.bot))
+
+    #     await self.bot.db.execute("""
+    #         INSERT INTO permanent_embed (key, channel_id, message_id)
+    #         VALUES ('restock_historic', $1, $2)
+    #         ON CONFLICT (key)
+    #         DO UPDATE SET channel_id=EXCLUDED.channel_id,
+    #                       message_id=EXCLUDED.message_id;
+    #     """, ctx.channel.id, msg.id)
+
+    #     await ctx.send("Permanent embed created.")
+
+    # @commands.command()
+    # @commands.has_permissions(administrator=True)
+    # async def update_embed(self, ctx):
+    #     row = await self.bot.db.fetchrow("""
+    #         SELECT channel_id, message_id FROM permanent_embed WHERE key='restock_historic;
+    #     """)
+
+    #     if not row:
+    #         return await ctx.send("Permanent embed not found.")
+
+    #     channel = self.bot.get_channel(row["channel_id"])
+    #     msg = await channel.fetch_message(row["message_id"])
+
+    #     embed = discord.Embed(
+    #         title="Query Panel (Updated)",
+    #         description="Press the button to run a query.",
+    #         color=discord.Color.green()
+    #     )
+
+    #     await msg.edit(embed=embed, view=PermanentEmbedView(self.bot))
+    #     await ctx.send("Updated permanent embed.")
 
 
 async def setup(bot: commands.Bot):

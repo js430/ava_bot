@@ -5,6 +5,7 @@ from discord.ext import commands, tasks
 import discord
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
+from cogs.restocks import PermanentEmbedView
 
 # -----------------------------
 # 🧩 Load environment variables
@@ -105,6 +106,7 @@ async def on_ready():
         # logger.info("✅ Synced global slash commands")
     except Exception as e:
         logger.error(f"❌ Failed to sync slash commands: {e}")
+    bot.add_view(PermanentEmbedView(bot))  # persistent
 
 # -----------------------------
 # 🏁 Main entry point
