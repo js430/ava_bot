@@ -565,9 +565,7 @@ class Restocks(commands.Cog):
         # Send confirmation message
         await interaction.response.defer()
         await interaction.channel.send(
-        f"📍 **{location}** is empty as of **{current_time}**.",
-        ephemeral=False
-    )
+        f"📍 **{location}** is empty as of **{current_time}**.")
 
     # -----------------------------
     # Slash Command /summarize
