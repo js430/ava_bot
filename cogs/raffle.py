@@ -12,7 +12,6 @@ class Raffle(commands.Cog):
     async def startraffle(self, interaction: discord.Interaction, name: str, max_entries: int, max_entries_per_user: int, cost_per_entry: float):
         await interaction.response.send_message("Raffle created!", ephemeral=True)
 
-
         # Create private thread
         thread = await interaction.channel.create_thread(
             name=f"Raffle - {name}",
@@ -166,4 +165,4 @@ class Raffle(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(Raffle(bot))
+    await bot.add_cog(Raffle(bot)) 
