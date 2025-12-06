@@ -48,7 +48,7 @@ location_links={"reston_target":"https://maps.app.goo.gl/AzGn3V5ES1sUyP2M7",
                 "woodbridge_target":"https://maps.app.goo.gl/CnNT3PfrUsUpdp8o6",
                 "dumfries_target": "https://maps.app.goo.gl/9TGrwBS6Ttb16Bor6",
                 "winchester_target":"https://maps.app.goo.gl/yUtyMNNhh9FaqTPH6",
-                "southriding_target":"https://maps.app.goo.gl/M8ArvbtWJzzBHxfp9",
+                "southriding_target":"https://maps.app.goo.gl/79yTMu5WnuFQNQAH9",
 
                 "frederick_target":"https://maps.app.goo.gl/9Zst7iJfa3t7qzvw5", 
                 "gaithersburg_target":"https://maps.app.goo.gl/rmQ7X9knce8jkiEM9",
