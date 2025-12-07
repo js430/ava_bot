@@ -8,6 +8,7 @@ from collections import defaultdict
 import logging
 import asyncpg
 import os
+import pytz
 
 logger = logging.getLogger("restocks")
 #VARIABLES
@@ -82,6 +83,7 @@ location_links={"reston_target":"https://maps.app.goo.gl/AzGn3V5ES1sUyP2M7",
 DATABASE_URL = os.getenv("DATABASE_URL")
 SUMMARY_CHANNEL_ID = 1431090547606687804  # 👈 Replace with your channel ID
 SUMMARY_HOUR = 22  # 24-hour format (22 = 10 PM Eastern)
+NY_TZ = pytz.timezone("America/New_York")
 
 class StoreChoiceView(discord.ui.View):
     def __init__(self, interaction: discord.Interaction, command_name: str, cog: "Restocks"):
@@ -407,6 +409,36 @@ class PermanentEmbedView(discord.ui.View):
     async def run_query(self, interaction: discord.Interaction, button: discord.ui.Button):
         modal = QueryModal(self.bot)
         await interaction.response.send_modal(modal)
+
+class SQLPagination(discord.ui.View):
+    def __init__(self, pages, author_id):
+        super().__init__(timeout=180)
+        self.pages = pages
+        self.author_id = author_id
+        self.index = 0
+
+    async def update_message(self, interaction: discord.Interaction):
+        embed = self.pages[self.index]
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)
+    async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author_id:
+            return await interaction.response.send_message("You cannot use this menu.", ephemeral=True)
+
+        if self.index > 0:
+            self.index -= 1
+            await self.update_message(interaction)
+
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)
+    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author_id:
+            return await interaction.response.send_message("You cannot use this menu.", ephemeral=True)
+
+        if self.index < len(self.pages) - 1:
+            self.index += 1
+            await self.update_message(interaction)
+
 # ---------------- COG ----------------
 class Restocks(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -489,6 +521,40 @@ class Restocks(commands.Cog):
                 except:
                     pass
 
+    async def run_custom_sql(self, sql: str):
+        """
+        Executes a raw SQL query on the Railway Postgres database.
+        """
+        try:
+            async with self.bot.db.acquire() as conn:
+                if sql.strip().lower().startswith("select"):
+                    rows = await conn.fetch(sql)
+                    return rows
+                await conn.execute(sql)
+                return []
+        except Exception as e:
+            print(f"[SQL ERROR] {e}")
+            return None
+
+    def format_value(self, value):
+        """
+        Auto-format timestamps/dates to Eastern Time.
+        """
+        if isinstance(value, datetime):
+            # Convert timezone-aware → EST
+            if value.tzinfo:
+                value = value.astimezone(NY_TZ)
+            else:
+                value = NY_TZ.localize(value)
+            return value.strftime("%Y-%m-%d %I:%M:%S %p %Z")
+
+        return value
+
+    def chunk(self, lst, n):
+        """Split list lst into chunks of size n."""
+        for i in range(0, len(lst), n):
+            yield lst[i:i + n]
+            
     # ---------------- COMMANDS ----------------
     @app_commands.command(name="restock", description="Choose a store and location to create a thread.")
     @app_commands.guilds(discord.Object(id=1406738815854317658))
@@ -635,7 +701,54 @@ class Restocks(commands.Cog):
                 ephemeral=True
             )
 
+    @app_commands.command(name="runsql", description="Run a raw SQL query (Admin only).")
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.guilds(discord.Object(id=1406738815854317658))
+    async def runsql(self, interaction: discord.Interaction, sql: str):
+        await interaction.response.defer(thinking=True)
 
+        rows = await self.run_custom_sql(sql)
+
+        if rows is None:
+            return await interaction.followup.send("❌ SQL error. Check logs.")
+
+        if not rows:
+            return await interaction.followup.send("✔️ SQL executed successfully. No rows returned.")
+
+        # Convert rows → readable strings and autoformat datetime fields
+        formatted_rows = []
+        for row in rows:
+            parts = []
+            for k, v in row.items():
+                v = self.format_value(v)
+                parts.append(f"**{k}:** {v}")
+            formatted_rows.append("\n".join(parts))
+
+        # Chunk rows so each embed stays within limits (10 rows per page)
+        pages = []
+        for chunk in self.chunk(formatted_rows, 10):
+            embed = discord.Embed(
+                title="📊 SQL Query Results",
+                description=f"```sql\n{sql}\n```",
+                color=discord.Color.blue()
+            )
+            embed.add_field(
+                name="Rows",
+                value="\n\n".join(chunk),
+                inline=False
+            )
+            embed.set_footer(text=f"Returned {len(rows)} total rows")
+            pages.append(embed)
+
+        # If only 1 page → no pagination
+        if len(pages) == 1:
+            return await interaction.followup.send(embed=pages[0])
+
+        # Multiple pages → show paginator
+        view = SQLPagination(pages, interaction.user.id)
+        await interaction.followup.send(embed=pages[0], view=view)
+        
+        
     # @app_commands.command()
     # @app_commands.has_permissions(administrator=True)
     # @app_commands.guilds(discord.Object(id=1406738815854317658))
