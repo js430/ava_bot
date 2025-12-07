@@ -555,6 +555,32 @@ class Restocks(commands.Cog):
         """Split list lst into chunks of size n."""
         for i in range(0, len(lst), n):
             yield lst[i:i + n]
+    
+    async def resolve_usernames(self, rows):
+        """
+        If result rows contain 'user_id', fetch usernames and return a cache dict.
+        Returns: {user_id:int → username:str}
+        """
+        user_ids = set()
+
+        for row in rows:
+            if "user_id" in row:
+                uid = row["user_id"]
+                if isinstance(uid, int):
+                    user_ids.add(uid)
+
+        if not user_ids:
+            return {}
+
+        resolved = {}
+        for uid in user_ids:
+            try:
+                user = await self.bot.fetch_user(uid)
+                resolved[uid] = f"{user} ({uid})"
+            except:
+                resolved[uid] = f"Unknown User ({uid})"
+
+        return resolved
             
     # ---------------- COMMANDS ----------------
     @app_commands.command(name="restock", description="Choose a store and location to create a thread.")
@@ -709,6 +735,7 @@ class Restocks(commands.Cog):
         await interaction.response.defer(thinking=True)
 
         rows = await self.run_custom_sql(sql)
+        username_map = await self.resolve_usernames(rows)
 
         if rows is None:
             return await interaction.followup.send("❌ SQL error. Check logs.")
@@ -720,9 +747,16 @@ class Restocks(commands.Cog):
         formatted_rows = []
         for row in rows:
             parts = []
+
             for k, v in row.items():
-                v = self.format_value(v)
+                # Replace user_id with readable username
+                if k == "user_id" and isinstance(v, int):
+                    v = username_map.get(v, f"Unknown User ({v})")
+                else:
+                    v = self.format_value(v)
+
                 parts.append(f"**{k}:** {v}")
+
             formatted_rows.append("\n".join(parts))
 
         # Chunk rows so each embed stays within limits (10 rows per page)
