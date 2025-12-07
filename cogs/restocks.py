@@ -525,13 +525,14 @@ class Restocks(commands.Cog):
         """
         Executes a raw SQL query on the Railway Postgres database.
         """
+        if not self.pool:
+            logger.error("Database pool not initialized.")
+            return
+
         try:
-            async with self.bot.db.acquire() as conn:
-                if sql.strip().lower().startswith("select"):
-                    rows = await conn.fetch(sql)
-                    return rows
-                await conn.execute(sql)
-                return []
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch(sql)
+                return rows
         except Exception as e:
             print(f"[SQL ERROR] {e}")
             return None
