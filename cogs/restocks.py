@@ -238,15 +238,16 @@ class LocationButton(discord.ui.Button):
         if self.command_name != "test_restock":
             try:
                 eastern_time = datetime.now(ZoneInfo("America/New_York"))
-                await bot.db.execute(
-                    "INSERT INTO restock_reports (user_id, store_name, location, date, channel_name) VALUES ($1, $2, $3, $4, $5)",
-                    interaction.user.id,
-                    self.store_choice,
-                    self.location,
-                    eastern_time,
-                    channel.name
-                )
-                logger.info(f"✅ Logged restock report: {self.location} {self.store_choice} by {interaction.user} at {eastern_time}")
+                async with self.pool.acquire() as conn:
+                    await conn.execute(
+                        "INSERT INTO restock_reports (user_id, store_name, location, date, channel_name) VALUES ($1, $2, $3, $4, $5)",
+                        interaction.user.id,
+                        self.store_choice,
+                        self.location,
+                        eastern_time,
+                        channel.name
+                    )
+                    logger.info(f"✅ Logged restock report: {self.location} {self.store_choice} by {interaction.user} at {eastern_time}")
             except Exception as e:
                 logger.error(f"❌ Failed to log restock report: {e}")
 
@@ -352,15 +353,16 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
         if self.command_name != "test_restock":
             try:
                 eastern_time = datetime.now(ZoneInfo("America/New_York"))
-                await bot.db.execute(
-                    "INSERT INTO restock_reports (user_id, store_name, location, date, channel_name) VALUES ($1, $2, $3, $4, $5)",
-                    interaction.user.id,
-                    self.store_choice,
-                    custom_location,
-                    eastern_time,
-                    channel.name
-                )
-                logger.info(f"✅ Logged restock report: {custom_location} {self.store_choice} by {interaction.user} at {eastern_time}")
+                async with self.pool.acquire() as conn:
+                    await conn.execute(
+                        "INSERT INTO restock_reports (user_id, store_name, location, date, channel_name) VALUES ($1, $2, $3, $4, $5)",
+                        interaction.user.id,
+                        self.store_choice,
+                        custom_location,
+                        eastern_time,
+                        channel.name
+                    )
+                    logger.info(f"✅ Logged restock report: {custom_location} {self.store_choice} by {interaction.user} at {eastern_time}")
             except Exception as e:
                 logger.error(f"❌ Failed to log restock report: {e}")
 
@@ -386,10 +388,11 @@ class QueryModal(discord.ui.Modal, title="Query Information"):
         user_input_2 = self.field2.value
 
         # Run database query
-        row = await self.bot.db.fetchrow("""
-            SELECT * FROM restock_reports
-            WHERE store_name = $1 AND location = $2
-        """, user_input_1, user_input_2)
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT * FROM restock_reports
+                WHERE store_name = $1 AND location = $2
+            """, user_input_1, user_input_2)
 
         # DM results
         if row:
@@ -640,13 +643,15 @@ class Restocks(commands.Cog):
 )
     @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def empty(self, interaction: discord.Interaction, location: str, time: str = None):
+        
     # Determine current time in Eastern Time
         now = datetime.now(ZoneInfo("America/New_York"))
         current_time = time or now.strftime("%I:%M %p")
 
         # Log the command usage in the database
         try:
-            await self.bot.db.execute(
+            async with self.bot.pool.acquire() as conn:
+                await conn.execute(
                 "INSERT INTO command_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
                 interaction.user.id,
                 now,
@@ -697,8 +702,8 @@ class Restocks(commands.Cog):
                 AND (channel_name IS NULL OR channel_name != 'online-restock-information')
                 ORDER BY date ASC
             """
-
-            rows = await self.bot.db.fetch(query, target_date)
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch(query, target_date)
 
             if not rows:
                 await interaction.response.send_message(
