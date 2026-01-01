@@ -155,7 +155,7 @@ class LocationButton(discord.ui.Button):
         self.store_choice = store_choice
         self.command_name = command_name
         self.cog = cog
-        self.pool=None
+        self.pool : asyncpg.Pool = self.bot.pool
 
     async def callback(self, interaction: discord.Interaction):
         # Determine channels and roles
@@ -279,7 +279,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
         self.store_choice = store_choice
         self.command_name = command_name
         self.cog = cog
-        self.pool= None
+        self.pool : asyncpg.Pool = self.bot.pool
 
     async def on_submit(self, interaction: discord.Interaction):
         custom_location=self.location_name.value.strip()
@@ -372,7 +372,7 @@ class QueryModal(discord.ui.Modal, title="Query Information"):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-        self.pool= None
+        self.pool : asyncpg.Pool = bot.pool
 
         self.field1 = discord.ui.InputText(
             label="What store would you like information for?",
@@ -422,6 +422,7 @@ class SQLPagination(discord.ui.View):
         self.pages = pages
         self.author_id = author_id
         self.index = 0
+        
 
     async def update_message(self, interaction: discord.Interaction):
         embed = self.pages[self.index]
@@ -449,7 +450,7 @@ class SQLPagination(discord.ui.View):
 class Restocks(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.pool = None
+        self.pool : asyncpg.Pool = bot.pool
         self.bot.loop.create_task(self.init_db())
         self.daily_summary_task.start()
 
