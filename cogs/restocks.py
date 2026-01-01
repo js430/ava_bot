@@ -155,6 +155,7 @@ class LocationButton(discord.ui.Button):
         self.store_choice = store_choice
         self.command_name = command_name
         self.cog = cog
+        self.pool=None
 
     async def callback(self, interaction: discord.Interaction):
         # Determine channels and roles
@@ -278,6 +279,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
         self.store_choice = store_choice
         self.command_name = command_name
         self.cog = cog
+        self.pool= None
 
     async def on_submit(self, interaction: discord.Interaction):
         custom_location=self.location_name.value.strip()
@@ -370,6 +372,7 @@ class QueryModal(discord.ui.Modal, title="Query Information"):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
+        self.pool= None
 
         self.field1 = discord.ui.InputText(
             label="What store would you like information for?",
