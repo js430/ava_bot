@@ -11,35 +11,40 @@ logger = logging.getLogger("database")
 logger.setLevel(logging.INFO)
 
 ALLOWED_ROLE_ID = 1406753334051737631
+GUILD_ID = 1406738815854317658
 
 class Database(commands.Cog):
-    """Handles PostgreSQL database connection and table setup."""
+    """Handles PostgreSQL connection pool and table setup."""
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.pool: asyncpg.Pool | None = None
         self.bot.loop.create_task(self.init_db())
 
     async def init_db(self):
-        """Connect to the database and ensure tables exist."""
+        """Create the connection pool and ensure tables exist."""
         try:
             db_url = os.getenv("DATABASE_URL")
             if not db_url:
                 raise ValueError("DATABASE_URL not found in environment variables.")
 
-            self.bot.db = await asyncpg.connect(db_url)
-            logger.info("✅ Connected to PostgreSQL database successfully.")
+            self.pool = await asyncpg.create_pool(
+                dsn=db_url,
+                min_size=1,
+                max_size=10,
+                command_timeout=60
+            )
 
-            # Create tables
+            logger.info("✅ PostgreSQL connection pool created.")
             await self.setup_tables()
-            logger.info("✅ Database tables verified and ready.")
 
         except Exception as e:
-            logger.error(f"❌ Database connection failed: {e}")
+            logger.exception(f"❌ Database initialization failed: {e}")
 
     async def setup_tables(self):
-        """Create necessary tables if they don't already exist."""
-        try:
-            await self.bot.db.execute("""
+        """Create required tables."""
+        async with self.pool.acquire() as conn:
+            await conn.execute("""
                 CREATE TABLE IF NOT EXISTS command_logs (
                     id SERIAL PRIMARY KEY,
                     user_id BIGINT NOT NULL,
@@ -48,7 +53,7 @@ class Database(commands.Cog):
                 )
             """)
 
-            await self.bot.db.execute("""
+            await conn.execute("""
                 CREATE TABLE IF NOT EXISTS restock_reports (
                     id SERIAL PRIMARY KEY,
                     user_id BIGINT NOT NULL,
@@ -59,18 +64,13 @@ class Database(commands.Cog):
                 )
             """)
 
-            logger.info("✅ Tables 'command_logs' and 'restock_reports' are ready.")
-        except Exception as e:
-            logger.error(f"❌ Error setting up database tables: {e}")
+        logger.info("✅ Tables verified and ready.")
 
     async def cog_unload(self):
-        """Close the database connection when the cog unloads."""
-        try:
-            if hasattr(self.bot, "db"):
-                await self.bot.db.close()
-                logger.info("🔒 Closed PostgreSQL connection cleanly.")
-        except Exception as e:
-            logger.error(f"⚠️ Error closing database connection: {e}")
+        """Gracefully close the connection pool."""
+        if self.pool:
+            await self.pool.close()
+            logger.info("🔒 PostgreSQL pool closed.")
 
     # -----------------------------
     # Manual restock command
@@ -79,74 +79,68 @@ class Database(commands.Cog):
         name="manual_restock",
         description="Manually insert a restock report into the database"
     )
-    @app_commands.guilds(discord.Object(id=1406738815854317658))  # guild-specific
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
     async def manual_restock(
         self,
         interaction: discord.Interaction,
         user: discord.User,
         store_name: str,
         location: str,
-        date_time: str = None  # optional datetime in format 'YYYY-MM-DD HH:MM'
+        date_time: str | None = None
     ):
-        """Manually log a restock report."""
         member = interaction.user
+
         if not any(role.id == ALLOWED_ROLE_ID for role in member.roles):
             await interaction.response.send_message(
-                "❌ You do not have permission to use this command.", ephemeral=True
+                "❌ You do not have permission to use this command.",
+                ephemeral=True
             )
             return
 
-        # Determine timestamp
-        if date_time:
-            try:
-                timestamp = datetime.strptime(date_time, "%Y-%m-%d %H:%M")
-                timestamp = timestamp.astimezone(ZoneInfo("UTC"))
-            except ValueError:
-                await interaction.response.send_message(
-                    "❌ Invalid date format! Use `YYYY-MM-DD HH:MM`.", ephemeral=True
-                )
-                return
-        else:
-            timestamp = datetime.now(ZoneInfo("UTC"))
-
+        # Parse timestamp
         try:
-            await self.bot.db.execute(
-                "INSERT INTO restock_reports (user_id, store_name, location, date) VALUES ($1, $2, $3, $4)",
-                user.id,
-                store_name,
-                location,
-                timestamp
-            )
+            if date_time:
+                timestamp = datetime.strptime(date_time, "%Y-%m-%d %H:%M")
+                timestamp = timestamp.replace(tzinfo=ZoneInfo("UTC"))
+            else:
+                timestamp = datetime.now(ZoneInfo("UTC"))
+        except ValueError:
             await interaction.response.send_message(
-                f"✅ Successfully logged restock report for {user.mention} at **{location} ({store_name})** on {timestamp.strftime('%Y-%m-%d %I:%M %p')}.",
+                "❌ Invalid date format! Use `YYYY-MM-DD HH:MM`.",
                 ephemeral=True
             )
-            logger.info(f"✅ Manual restock inserted: {user} | {store_name} | {location} | {timestamp}")
-        except Exception as e:
+            return
+
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO restock_reports (user_id, store_name, location, date)
+                    VALUES ($1, $2, $3, $4)
+                    """,
+                    user.id,
+                    store_name,
+                    location,
+                    timestamp
+                )
+
             await interaction.response.send_message(
-                f"❌ Failed to insert restock report: {e}", ephemeral=True
+                f"✅ Logged restock for {user.mention} at "
+                f"**{location} ({store_name})** on "
+                f"{timestamp.strftime('%Y-%m-%d %I:%M %p')}.",
+                ephemeral=True
             )
-            logger.error(f"❌ Failed to insert manual restock: {e}")
 
-    # @app_commands.command(
-    #     name="query",
-    #     description="queries database"
-    # )
-    # @app_commands.guilds(discord.Object(id=1406738815854317658))  # guild-specific
-    # async def query(
-    #     self,
-    #     id
-    # ):
-    #     query = """
-    #             SELECT store_name, location, date, channel_name
-    #             FROM restock_reports
-    #             WHERE date::date = $1
-    #             AND (channel_name IS NULL OR channel_name != 'online-restock-information')
-    #             ORDER BY date ASC
-    #         """
+            logger.info(
+                f"Manual restock: {user.id} | {store_name} | {location} | {timestamp}"
+            )
 
-    #         rows = await self.bot.db.fetch(query)
-        
+        except Exception as e:
+            logger.exception("❌ Failed to insert manual restock")
+            await interaction.response.send_message(
+                "❌ Failed to insert restock report.",
+                ephemeral=True
+            )
+
 async def setup(bot: commands.Bot):
-    """Required setup function for the cog loader."""
     await bot.add_cog(Database(bot))
