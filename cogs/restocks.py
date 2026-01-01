@@ -650,7 +650,7 @@ class Restocks(commands.Cog):
 
         # Log the command usage in the database
         try:
-            async with self.bot.pool.acquire() as conn:
+            async with self.pool.acquire() as conn:
                 await conn.execute(
                 "INSERT INTO command_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
                 interaction.user.id,
