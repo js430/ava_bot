@@ -251,6 +251,7 @@ class LocationButton(discord.ui.Button):
                         channel.name
                     )
                     logger.info(f"✅ Logged restock report: {self.location} {self.store_choice} by {interaction.user} at {eastern_time}")
+                
             except Exception as e:
                 logger.error(f"❌ Failed to log restock report: {e}")
 
@@ -279,6 +280,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
     def __init__(self, store_choice: str, command_name: str, cog: "Restocks"):
         super().__init__()
         self.store_choice = store_choice
+        self.cog= cog
     @property
     def pool(self) -> asyncpg.Pool:
         return self.cog.bot.pool
@@ -371,9 +373,9 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
                 logger.error(f"❌ Failed to log restock report: {e}")
 
 class QueryModal(discord.ui.Modal, title="Query Information"):
-    def __init__(self, bot):
+    def __init__(self, cog: "Restocks"):
         super().__init__()
-        self.bot = bot
+        self.cog= cog
 
         self.field1 = discord.ui.InputText(
             label="What store would you like information for?",
@@ -456,10 +458,10 @@ class Restocks(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.bot.loop.create_task(self.init_db())
-        self.daily_summary_task.start()
+        self.daily_summary_task.start() 
     @property
     def pool(self) -> asyncpg.Pool:
-        return self.cog.bot.pool
+        return self.bot.pool
     
     async def init_db(self):
         """Initialize asyncpg connection pool using Railway DATABASE_URL"""
@@ -483,8 +485,7 @@ class Restocks(commands.Cog):
     async def send_daily_summary(self, channel: discord.TextChannel):
         """Fetch restocks from the database and send a summary embed."""
         eastern = ZoneInfo("America/New_York")
-        if not self.pool:
-            logger.error("Database pool not initialized.")
+        if not hasattr(self.bot, "pool") or not self.bot.pool:
             return
 
         today = datetime.now(ZoneInfo("America/New_York")).date()
