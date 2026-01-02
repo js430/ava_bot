@@ -155,7 +155,9 @@ class LocationButton(discord.ui.Button):
         self.store_choice = store_choice
         self.command_name = command_name
         self.cog = cog
-        self.pool : asyncpg.Pool = self.bot.pool
+    @property
+    def pool(self) -> asyncpg.Pool:
+        return self.cog.bot.pool
 
     async def callback(self, interaction: discord.Interaction):
         # Determine channels and roles
@@ -277,9 +279,9 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
     def __init__(self, store_choice: str, command_name: str, cog: "Restocks"):
         super().__init__()
         self.store_choice = store_choice
-        self.command_name = command_name
-        self.cog = cog
-        self.pool : asyncpg.Pool = self.bot.pool
+    @property
+    def pool(self) -> asyncpg.Pool:
+        return self.cog.bot.pool
 
     async def on_submit(self, interaction: discord.Interaction):
         custom_location=self.location_name.value.strip()
@@ -372,7 +374,6 @@ class QueryModal(discord.ui.Modal, title="Query Information"):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-        self.pool : asyncpg.Pool = bot.pool
 
         self.field1 = discord.ui.InputText(
             label="What store would you like information for?",
@@ -385,7 +386,11 @@ class QueryModal(discord.ui.Modal, title="Query Information"):
             placeholder="Enter value..."
         )
         self.add_item(self.field2)
-
+        
+    @property
+    def pool(self) -> asyncpg.Pool:
+        return self.cog.bot.pool
+    
     async def on_submit(self, interaction: discord.Interaction):
         user_input_1 = self.field1.value
         user_input_2 = self.field2.value
@@ -450,10 +455,12 @@ class SQLPagination(discord.ui.View):
 class Restocks(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.pool : asyncpg.Pool = bot.pool
         self.bot.loop.create_task(self.init_db())
         self.daily_summary_task.start()
-
+    @property
+    def pool(self) -> asyncpg.Pool:
+        return self.cog.bot.pool
+    
     async def init_db(self):
         """Initialize asyncpg connection pool using Railway DATABASE_URL"""
         try:
@@ -494,8 +501,8 @@ class Restocks(commands.Cog):
                     today
                 )
 
-            if not rows:
-                description = f"No restocks reported for {today.strftime('%Y-%m-%d')}."
+                if not rows:
+                    description = f"No restocks reported for {today.strftime('%Y-%m-%d')}."
             summary_lines = []
             for row in rows:
                 store = row["store_name"].title()
