@@ -523,18 +523,18 @@ class Restocks(commands.Cog):
             logger.error(f"Error sending daily summary: {e}")
 
 
-    # async def log_command_use(self, interaction: discord.Interaction, command_name: str):
-    #     LOG_CHANNEL_ID = 1433472852467777711
-    #     log_channel = self.bot.get_channel(LOG_CHANNEL_ID)
-    #     if log_channel:
-    #         message = f"**Command Used:** `{command_name}` by {interaction.user.mention}"
-    #         log_msg = await log_channel.send(message)
-    #         if command_name == "test_restock":
-    #             await asyncio.sleep(60)
-    #             try:
-    #                 await log_msg.delete()
-    #             except:
-    #                 pass
+    async def log_command_use(self, interaction: discord.Interaction, command_name: str):
+        LOG_CHANNEL_ID = 1433472852467777711
+        log_channel = self.bot.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            message = f"**Command Used:** `{command_name}` by {interaction.user.mention}"
+            log_msg = await log_channel.send(message)
+            if command_name == "test_restock":
+                await asyncio.sleep(60)
+                try:
+                    await log_msg.delete()
+                except:
+                    pass
 
     async def run_custom_sql(self, sql: str):
         """
@@ -603,7 +603,7 @@ class Restocks(commands.Cog):
     async def restock(self, interaction: discord.Interaction):
         view = StoreChoiceView(interaction, "restock", self)
         await interaction.response.send_message("Choose a **store**:", view=view, ephemeral=True)
-        #await self.log_command_use(interaction, "restock")
+        await self.log_command_use(interaction, "restock")
 
     @app_commands.command(name="test_restock", description="Test restock thread creation.")
     @app_commands.guilds(discord.Object(id=1406738815854317658))
