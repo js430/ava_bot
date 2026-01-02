@@ -157,7 +157,7 @@ class LocationButton(discord.ui.Button):
         self.cog = cog
     @property
     def pool(self) -> asyncpg.Pool:
-        return self.cog.bot.pool
+        return self.cog.pool
 
     async def callback(self, interaction: discord.Interaction):
         # Determine channels and roles
@@ -283,7 +283,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
         self.cog= cog
     @property
     def pool(self) -> asyncpg.Pool:
-        return self.cog.bot.pool
+        return self.cog.pool
 
     async def on_submit(self, interaction: discord.Interaction):
         custom_location=self.location_name.value.strip()
@@ -391,7 +391,7 @@ class QueryModal(discord.ui.Modal, title="Query Information"):
         
     @property
     def pool(self) -> asyncpg.Pool:
-        return self.cog.bot.pool
+        return self.cog.pool
     
     async def on_submit(self, interaction: discord.Interaction):
         user_input_1 = self.field1.value
@@ -461,7 +461,7 @@ class Restocks(commands.Cog):
         self.daily_summary_task.start() 
     @property
     def pool(self) -> asyncpg.Pool:
-        return self.bot.pool
+        return getattr(self.bot, "db_pool", None)
     
     async def init_db(self):
         """Initialize asyncpg connection pool using Railway DATABASE_URL"""
@@ -485,7 +485,7 @@ class Restocks(commands.Cog):
     async def send_daily_summary(self, channel: discord.TextChannel):
         """Fetch restocks from the database and send a summary embed."""
         eastern = ZoneInfo("America/New_York")
-        if not hasattr(self.bot, "pool") or not self.bot.pool:
+        if not hasattr(self.bot, "pool") or not self.pool:
             return
 
         today = datetime.now(ZoneInfo("America/New_York")).date()

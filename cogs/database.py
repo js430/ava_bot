@@ -18,17 +18,16 @@ class Database(commands.Cog):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.pool: asyncpg.Pool | None = None
-        self.bot.loop.create_task(self.init_db())
+        bot.loop.create_task(self.init_pool())
 
-    async def init_db(self):
+    async def init_pool(self):
         """Create the connection pool and ensure tables exist."""
         try:
             db_url = os.getenv("DATABASE_URL")
             if not db_url:
                 raise ValueError("DATABASE_URL not found in environment variables.")
 
-            self.pool = await asyncpg.create_pool(
+            self.bot.db_pool = await asyncpg.create_pool(
                 dsn=db_url,
                 min_size=1,
                 max_size=10,
