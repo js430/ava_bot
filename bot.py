@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from views.lookup_view import RestockLookupView
 
 # -----------------------------
-# 🧩 Env
+# 🧩 Environment
 # -----------------------------
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -39,32 +39,54 @@ intents.guilds = True
 intents.members = True
 
 # -----------------------------
-# 🤖 Bot
+# ⚖️ Bot Class
 # -----------------------------
 class MyBot(commands.Bot):
-    async def setup_hook(self):
-        # Load cogs
+    def __init__(self):
+        super().__init__(command_prefix="/", intents=intents)
+        self.remove_command("help")  # optional
+        self.loop.create_task(self._startup_tasks())
+
+    async def _startup_tasks(self):
+        """Run after bot is ready: cogs, persistent views, tasks."""
+        await self.wait_until_ready()
+
+        # Load Cogs
         for cog in ("cogs.database", "cogs.restocks", "cogs.raffle"):
-            await self.load_extension(cog)
+            try:
+                await self.load_extension(cog)
+                logger.info(f"✅ Loaded cog: {cog}")
+            except Exception as e:
+                logger.error(f"❌ Failed to load cog {cog}: {e}")
 
         # Register persistent views
-        self.add_view(RestockLookupView())  # only if safe without db_pool
+        self.add_view(RestockLookupView())
 
         # Start background tasks
         auto_cleanup.start(self)
 
-        # Post persistent embed
+        # Post persistent lookup embed
         await post_lookup_embed(self)
 
-        # Sync slash commands
+        # Sync slash commands for each guild
         for guild_id in GUILD_IDS:
-            await self.tree.sync(guild=discord.Object(id=guild_id))
+            try:
+                await self.tree.sync(guild=discord.Object(id=guild_id))
+                logger.info(f"✅ Synced commands for guild {guild_id}")
+            except Exception as e:
+                logger.error(f"❌ Failed to sync commands for guild {guild_id}: {e}")
+
+    async def setup_hook(self):
+        # setup_hook is optional if you do all initialization in _startup_tasks
+        pass
 
 # -----------------------------
-# 🧹 Auto cleanup task
+# 🧹 Auto Cleanup Task
 # -----------------------------
 @tasks.loop(minutes=1)
 async def auto_cleanup(bot: commands.Bot):
+    """Deletes old messages from a channel, ignoring exempt roles."""
+    await bot.wait_until_ready()
     channel = bot.get_channel(TARGET_CHANNEL_ID)
     if not isinstance(channel, discord.TextChannel):
         return
@@ -81,16 +103,18 @@ async def auto_cleanup(bot: commands.Bot):
                 await message.delete()
                 await asyncio.sleep(1)
             except (discord.NotFound, discord.Forbidden):
-                pass
+                continue
 
 # -----------------------------
-# 📌 Persistent lookup embed
+# 📌 Persistent Lookup Embed
 # -----------------------------
 async def post_lookup_embed(bot: commands.Bot):
     await bot.wait_until_ready()
-
     channel = bot.get_channel(LOOKUP_CHANNEL_ID) or await bot.fetch_channel(LOOKUP_CHANNEL_ID)
+    if not isinstance(channel, discord.TextChannel):
+        return
 
+    # Check if embed/button already exists
     async for msg in channel.history(limit=25):
         if msg.author.id != bot.user.id:
             continue
@@ -99,32 +123,23 @@ async def post_lookup_embed(bot: commands.Bot):
                 if child.custom_id == "restock_lookup_button":
                     return  # already exists
 
+    # Send new persistent embed
     embed = discord.Embed(
         title="Restock Lookup",
         description="Press the button below to search past restocks."
     )
-
     await channel.send(embed=embed, view=RestockLookupView())
 
 # -----------------------------
-# 🤖 Instantiate bot
+# 🤖 Instantiate and Run Bot
 # -----------------------------
-bot = MyBot(
-    command_prefix="/",
-    intents=intents,
-)
+bot = MyBot()
 
-# -----------------------------
-# Optional: on_ready (safe now)
-# -----------------------------
 @bot.event
 async def on_ready():
     logger.info(f"🤖 Logged in as {bot.user}")
     await bot.change_presence(activity=discord.Game("Tracking restocks 👀"))
 
-# -----------------------------
-# 🏁 Run
-# -----------------------------
 async def main():
     async with bot:
         await bot.start(TOKEN)
