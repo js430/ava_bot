@@ -41,31 +41,31 @@ class RestockLookupView(discord.ui.View):
 
 
 class StartLookupButton(discord.ui.Button):
-    def __init__(self, parent: RestockLookupView):
+    def __init__(self, parent_view: RestockLookupView):
         super().__init__(label="🔍 Look up restock history", style=discord.ButtonStyle.primary)
-        self.parent = parent
+        self.lookup_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.parent.user:
+        if interaction.user != self.lookup_view.user:
             return await interaction.response.send_message("This panel is not for you!", ephemeral=True)
 
         # Remove the start button
-        self.parent.clear_items()
+        self.lookup_view.clear_items()
 
         # Add store buttons
         for store in STORE_CHOICES:
-            self.parent.add_item(StoreButton(store, self.parent))
+            self.lookup_view.add_item(StoreButton(store, self.lookup_view))
         # Add location buttons
         for loc in LOCATION_CHOICES:
-            self.parent.add_item(LocationButton(loc, self.parent))
+            self.lookup_view.add_item(LocationButton(loc, self.lookup_view))
 
-        await interaction.response.edit_message(content="Select a store and location:", view=self.parent)
+        await interaction.response.edit_message(content="Select a store and location:", view=self.lookup_view)
 
 
 class StoreButton(discord.ui.Button):
-    def __init__(self, store: str, parent: RestockLookupView):
+    def __init__(self, store, parent_view):
         super().__init__(label=store, style=discord.ButtonStyle.primary)
-        self.parent = parent
+        self.lookup_view = parent_view 
 
     async def callback(self, interaction: discord.Interaction):
         self.parent.selected_store = self.label
@@ -76,9 +76,9 @@ class StoreButton(discord.ui.Button):
 
 
 class LocationButton(discord.ui.Button):
-    def __init__(self, location: str, parent: RestockLookupView):
+    def __init__(self, location, parent_view):
         super().__init__(label=location, style=discord.ButtonStyle.secondary)
-        self.parent = parent
+        self.lookup_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
         self.parent.selected_location = self.label
