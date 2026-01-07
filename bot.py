@@ -92,7 +92,7 @@ async def auto_cleanup():
 # -----------------------------
 # 📌 Persistent lookup embed
 # -----------------------------
-async def post_lookup_embed():
+async def post_lookup_embed(self, ctx):
     await bot.wait_until_ready()
 
     channel = bot.get_channel(LOOKUP_CHANNEL_ID) or await bot.fetch_channel(LOOKUP_CHANNEL_ID)
@@ -112,7 +112,7 @@ async def post_lookup_embed():
         color=discord.Color.blue()
     )
 
-    await channel.send(embed=embed, view=RestockLookupView())
+    await channel.send(embed=embed, view=RestockLookupView(user=None))
 
 
 
@@ -125,7 +125,7 @@ async def on_ready():
     logger.info("------")
     await bot.change_presence(activity=discord.Game("Tracking restocks 👀"))
     auto_cleanup.start()
-    bot.add_view(RestockLookupView())
+    bot.add_view(RestockLookupView(user=None))
     await post_lookup_embed()
      # -----------------------------
     # 🌐 Auto-sync slash commands

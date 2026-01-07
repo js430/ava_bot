@@ -3,19 +3,15 @@ from utils.paginator import RestockPaginator
 
 STORE_CHOICES = ["Walmart", "Target", "Best Buy"]
 LOCATION_CHOICES =["Fair Lakes", "Springfield", "Reston", "7C","Chantilly", "Mosaic", "South Riding", "Potomac Yard", "Sterling/PR", "Ashburn", "Skyline","Kingstowne", "Gainesville", "Burke", "Manassas", "Leesburg", "Woodbridge", "Tysons"]
-
-
 class RestockLookupView(discord.ui.View):
     def __init__(self, user: discord.User):
-        super().__init__(timeout=None)  # persistent
+        super().__init__(timeout=None)
         self.user = user
         self.selected_store = None
         self.selected_location = None
 
-        # Add store select
-        self.add_item(StoreSelect(self))
-        # Add location select
-        self.add_item(LocationSelect(self))
+        # Initial trigger button
+        self.add_item(StartLookupButton(self))
 
     async def send_results(self, interaction: discord.Interaction):
         pool = interaction.client.db_pool
@@ -41,35 +37,52 @@ class RestockLookupView(discord.ui.View):
         paginator = RestockPaginator(rows, self.user)
         await paginator.send()
         await interaction.followup.send("📬 Results sent to your DMs!", ephemeral=True)
-class StoreSelect(discord.ui.Select):
+        self.stop()
+
+
+class StartLookupButton(discord.ui.Button):
     def __init__(self, parent: RestockLookupView):
-        options = [discord.SelectOption(label=s) for s in STORE_CHOICES]
-        super().__init__(placeholder="Select a store...", min_values=1, max_values=1, options=options, custom_id="select_store")
+        super().__init__(label="🔍 Look up restock history", style=discord.ButtonStyle.primary)
         self.parent = parent
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user != self.parent.user:
-            return await interaction.response.send_message("This is not for you!", ephemeral=True)
+            return await interaction.response.send_message("This panel is not for you!", ephemeral=True)
 
-        self.parent.selected_store = self.values[0]
-        await interaction.response.send_message(f"Selected store: {self.parent.selected_store}", ephemeral=True)
+        # Remove the start button
+        self.parent.clear_items()
+
+        # Add store buttons
+        for store in STORE_CHOICES:
+            self.parent.add_item(StoreButton(store, self.parent))
+        # Add location buttons
+        for loc in LOCATION_CHOICES:
+            self.parent.add_item(LocationButton(loc, self.parent))
+
+        await interaction.response.edit_message(content="Select a store and location:", view=self.parent)
+
+
+class StoreButton(discord.ui.Button):
+    def __init__(self, store: str, parent: RestockLookupView):
+        super().__init__(label=store, style=discord.ButtonStyle.primary)
+        self.parent = parent
+
+    async def callback(self, interaction: discord.Interaction):
+        self.parent.selected_store = self.label
+        await interaction.response.send_message(f"Selected store: {self.label}", ephemeral=True)
 
         if self.parent.selected_store and self.parent.selected_location:
             await self.parent.send_results(interaction)
 
 
-class LocationSelect(discord.ui.Select):
-    def __init__(self, parent: RestockLookupView):
-        options = [discord.SelectOption(label=l) for l in LOCATION_CHOICES]
-        super().__init__(placeholder="Select a location...", min_values=1, max_values=1, options=options, custom_id="select_location")
+class LocationButton(discord.ui.Button):
+    def __init__(self, location: str, parent: RestockLookupView):
+        super().__init__(label=location, style=discord.ButtonStyle.secondary)
         self.parent = parent
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.parent.user:
-            return await interaction.response.send_message("This is not for you!", ephemeral=True)
-
-        self.parent.selected_location = self.values[0]
-        await interaction.response.send_message(f"Selected location: {self.parent.selected_location}", ephemeral=True)
+        self.parent.selected_location = self.label
+        await interaction.response.send_message(f"Selected location: {self.label}", ephemeral=True)
 
         if self.parent.selected_store and self.parent.selected_location:
             await self.parent.send_results(interaction)
