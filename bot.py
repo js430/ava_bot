@@ -121,18 +121,21 @@ async def post_lookup_embed(bot: MyBot):
 
     await channel.send(embed=embed, view=RestockLookupView())
 
-# -----------------------------
-# Optional: on_ready
-# -----------------------------
-async def on_ready_event():
-    logger.info(f"🤖 Logged in as {bot.user}")
-    await bot.change_presence(activity=discord.Game("Tracking restocks 👀"))
+
 
 # -----------------------------
 # 🤖 Instantiate bot
 # -----------------------------
 bot = MyBot()
-bot.event(on_ready_event)
+
+# -----------------------------
+# Optional: on_ready
+# -----------------------------
+@bot.event
+async def on_ready():
+    logger.info(f"🤖 Logged in as {bot.user}")
+    await bot.change_presence(activity=discord.Game("Tracking restocks 👀"))
+
 
 # -----------------------------
 # 🏁 Run
