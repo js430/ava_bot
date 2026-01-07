@@ -125,8 +125,8 @@ async def on_ready():
     logger.info("------")
     await bot.change_presence(activity=discord.Game("Tracking restocks 👀"))
     auto_cleanup.start()
-    bot.add_view(RestockLookupView(user=None))
-    await post_lookup_embed()
+    #bot.add_view(RestockLookupView(user=None))
+    #await post_lookup_embed()
      # -----------------------------
     # 🌐 Auto-sync slash commands
     # -----------------------------
