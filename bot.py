@@ -92,7 +92,7 @@ async def auto_cleanup():
 # -----------------------------
 # 📌 Persistent lookup embed
 # -----------------------------
-async def post_lookup_embed(self, ctx):
+async def post_lookup_embed():
     await bot.wait_until_ready()
 
     channel = bot.get_channel(LOOKUP_CHANNEL_ID) or await bot.fetch_channel(LOOKUP_CHANNEL_ID)
