@@ -142,4 +142,4 @@ class Database(commands.Cog):
             )
     
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Database(bot))
+    await bot.add_cog(Database(bot)) 
