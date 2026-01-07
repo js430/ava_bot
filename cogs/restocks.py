@@ -281,6 +281,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
         super().__init__()
         self.store_choice = store_choice
         self.cog= cog
+        self.command_name=command_name
     @property
     def pool(self) -> asyncpg.Pool:
         return self.cog.pool

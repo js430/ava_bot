@@ -1,23 +1,28 @@
 import os
 import asyncio
 import logging
-from discord.ext import commands, tasks
-import discord
-from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
-from cogs.restocks import PermanentEmbedView
+
+import discord
+from discord.ext import commands, tasks
+from dotenv import load_dotenv
+
+from views.lookup_view import RestockLookupView
 
 # -----------------------------
-# 🧩 Load environment variables
+# 🧩 Env
 # -----------------------------
-load_dotenv()  # loads .env file with TOKEN, DATABASE_URL, etc.
+load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
+
 GUILD_IDS = [1406738815854317658]
-TARGET_CHANNEL_ID = 1407118323749224531  # The channel to auto-delete messages in
-EXEMPT_ROLE_IDS = [1406753334051737631] #Exempt role from autodelete
+TARGET_CHANNEL_ID = 1407118323749224531
+EXEMPT_ROLE_IDS = [1406753334051737631]
+LOOKUP_CHANNEL_ID = 1458253543344570440
 DELETE_AFTER_SECONDS = 300
+
 # -----------------------------
-# ⚙️ Logging setup
+# ⚙️ Logging
 # -----------------------------
 logging.basicConfig(
     level=logging.INFO,
@@ -26,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger("main")
 
 # -----------------------------
-# 🤖 Intents setup
+# 🤖 Intents
 # -----------------------------
 intents = discord.Intents.default()
 intents.message_content = True
@@ -34,88 +39,106 @@ intents.guilds = True
 intents.members = True
 
 # -----------------------------
-# 🧠 Bot setup
+# 🤖 Bot
 # -----------------------------
-bot = commands.Bot(
+class MyBot(commands.Bot):
+    async def setup_hook(self):
+        """Runs ONCE at startup, before connecting to Discord."""
+
+        # Load cogs
+        for cog in (
+            "cogs.database",
+            "cogs.restocks",
+            "cogs.raffle",
+        ):
+            try:
+                await self.load_extension(cog)
+                logger.info(f"✅ Loaded cog: {cog}")
+            except Exception as e:
+                logger.error(f"❌ Failed to load cog {cog}: {e}")
+
+        # Register persistent views
+        self.add_view(RestockLookupView())
+
+        # Start background tasks
+        auto_cleanup.start()
+
+        # Post persistent embed
+        await post_lookup_embed(self)
+
+        # Sync slash commands
+        for guild_id in GUILD_IDS:
+            await self.tree.sync(guild=discord.Object(id=guild_id))
+            logger.info(f"✅ Synced commands for guild {guild_id}")
+
+# -----------------------------
+# 🧹 Auto cleanup task
+# -----------------------------
+@tasks.loop(minutes=1)
+async def auto_cleanup():
+    channel = bot.get_channel(TARGET_CHANNEL_ID)
+    if not isinstance(channel, discord.TextChannel):
+        return
+
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=DELETE_AFTER_SECONDS)
+
+    async for message in channel.history(limit=200):
+        if message.author.bot:
+            continue
+        if any(role.id in EXEMPT_ROLE_IDS for role in message.author.roles):
+            continue
+        if message.created_at < cutoff:
+            try:
+                await message.delete()
+                await asyncio.sleep(1)
+            except (discord.NotFound, discord.Forbidden):
+                pass
+
+# -----------------------------
+# 📌 Persistent lookup embed
+# -----------------------------
+async def post_lookup_embed(bot: commands.Bot):
+    await bot.wait_until_ready()
+
+    channel = bot.get_channel(LOOKUP_CHANNEL_ID) or await bot.fetch_channel(LOOKUP_CHANNEL_ID)
+
+    async for msg in channel.history(limit=25):
+        if msg.author.id != bot.user.id:
+            continue
+        for row in msg.components:
+            for child in row.children:
+                if child.custom_id == "restock_lookup_button":
+                    return  # already exists
+
+    embed = discord.Embed(
+        title="Restock Lookup",
+        description="Press the button below to search past restocks."
+    )
+
+    await channel.send(embed=embed, view=RestockLookupView())
+
+# -----------------------------
+# 🤖 Instantiate bot
+# -----------------------------
+bot = MyBot(
     command_prefix="!",
     intents=intents,
 )
 
-async def load_cogs():
-    """Loads all cogs from the cogs folder."""
-    cogs = [
-        "cogs.database",
-        "cogs.restocks",
-        "cogs.raffle",
-        # "cogs.utils",
-    ]
-
-    for cog in cogs:
-        try:
-            await bot.load_extension(cog)
-            logger.info(f"✅ Loaded cog: {cog}")
-        except Exception as e:
-            logger.error(f"❌ Failed to load cog {cog}: {e}")
-                       
-@tasks.loop(minutes=1)
-async def auto_cleanup():
-    channel = bot.get_channel(TARGET_CHANNEL_ID)
-    if not channel or not isinstance(channel, discord.TextChannel):
-        return
-
-    now = datetime.now(tz=timezone.utc)
-    cutoff = now - timedelta(seconds=DELETE_AFTER_SECONDS)
-
-    # Use channel.history to get messages
-    async for message in channel.history(limit=200, oldest_first=False):
-        # Skip bot messages
-        if message.author.bot:
-            continue
-        # Skip exempt roles
-        if any(role.id in EXEMPT_ROLE_IDS for role in message.author.roles):
-            continue
-        # Only delete messages older than cutoff
-        if message.created_at < cutoff:
-            try:
-                await message.delete()
-                await asyncio.sleep(1)  # 1-second delay to avoid rate limits
-            except discord.NotFound:
-                continue
-            except discord.Forbidden:
-                print(f"Missing permissions to delete message {message.id}")
-
 # -----------------------------
-# 🚀 Startup event
+# Optional: on_ready (safe now)
 # -----------------------------
 @bot.event
 async def on_ready():
-    logger.info(f"🤖 Logged in as {bot.user} (ID: {bot.user.id})")
-    logger.info("------")
+    logger.info(f"🤖 Logged in as {bot.user}")
     await bot.change_presence(activity=discord.Game("Tracking restocks 👀"))
-    auto_cleanup.start()
-     # -----------------------------
-    # 🌐 Auto-sync slash commands
-    # -----------------------------
-    try:
-        for guild_id in GUILD_IDS:
-            guild = discord.Object(id=guild_id)
-            await bot.tree.sync(guild=guild)
-            logger.info(f"✅ Synced slash commands for guild {guild_id}")
-        # Optional global sync (can be slower, use only if needed)
-        # await bot.tree.sync()
-        # logger.info("✅ Synced global slash commands")
-    except Exception as e:
-        logger.error(f"❌ Failed to sync slash commands: {e}")
-    bot.add_view(PermanentEmbedView(bot))  # persistent
 
 # -----------------------------
-# 🏁 Main entry point
+# 🏁 Run
 # -----------------------------
 async def main():
     async with bot:
-        await load_cogs()
         await bot.start(TOKEN)
-
 
 if __name__ == "__main__":
     asyncio.run(main())

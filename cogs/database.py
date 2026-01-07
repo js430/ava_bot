@@ -141,5 +141,13 @@ class Database(commands.Cog):
                 ephemeral=True
             )
 
+    @app_commands.command(
+        name="restock_lookup",
+        description="Looks up last 5 restocks at a particular location"
+    )
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
+    async def restock_lookup(self):
+        return
+    
 async def setup(bot: commands.Bot):
     await bot.add_cog(Database(bot))
