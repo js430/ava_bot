@@ -42,7 +42,7 @@ class Database(commands.Cog):
 
     async def setup_tables(self):
         """Create required tables."""
-        async with self.pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS command_logs (
                     id SERIAL PRIMARY KEY,
