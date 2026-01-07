@@ -42,7 +42,7 @@ class RestockLookupView(discord.ui.View):
 
 class StartLookupButton(discord.ui.Button):
     def __init__(self, parent_view: RestockLookupView):
-        super().__init__(label="🔍 Look up restock history", style=discord.ButtonStyle.primary)
+        super().__init__(label="🔍 Look up restock history", style=discord.ButtonStyle.primary, custom_id="restock_lookup_button")
         self.lookup_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
@@ -64,7 +64,7 @@ class StartLookupButton(discord.ui.Button):
 
 class StoreButton(discord.ui.Button):
     def __init__(self, store, parent_view):
-        super().__init__(label=store, style=discord.ButtonStyle.primary)
+        super().__init__(label=store, style=discord.ButtonStyle.primary, custom_id=f"store_{store}")
         self.lookup_view = parent_view 
 
     async def callback(self, interaction: discord.Interaction):
@@ -77,7 +77,7 @@ class StoreButton(discord.ui.Button):
 
 class LocationButton(discord.ui.Button):
     def __init__(self, location, parent_view):
-        super().__init__(label=location, style=discord.ButtonStyle.secondary)
+        super().__init__(label=location, style=discord.ButtonStyle.secondary, custom_id=f"location_{location}")
         self.lookup_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
