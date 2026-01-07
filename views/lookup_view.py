@@ -46,7 +46,7 @@ class StartLookupButton(discord.ui.Button):
         self.lookup_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.lookup_view.user:
+        if self.lookup_view.user is not None and interaction.user != self.lookup_view.user:
             return await interaction.response.send_message("This panel is not for you!", ephemeral=True)
 
         # Remove the start button
