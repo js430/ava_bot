@@ -68,11 +68,11 @@ class StoreButton(discord.ui.Button):
         self.lookup_view = parent_view 
 
     async def callback(self, interaction: discord.Interaction):
-        self.parent.selected_store = self.label
+        self.lookup_view.selected_store = self.label
         await interaction.response.send_message(f"Selected store: {self.label}", ephemeral=True)
 
-        if self.parent.selected_store and self.parent.selected_location:
-            await self.parent.send_results(interaction)
+        if self.lookup_view.selected_store and self.lookup_view.selected_location:
+            await self.lookup_view.send_results(interaction)
 
 
 class LocationButton(discord.ui.Button):
@@ -81,8 +81,8 @@ class LocationButton(discord.ui.Button):
         self.lookup_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
-        self.parent.selected_location = self.label
+        self.lookup_view.selected_location = self.label
         await interaction.response.send_message(f"Selected location: {self.label}", ephemeral=True)
 
-        if self.parent.selected_store and self.parent.selected_location:
-            await self.parent.send_results(interaction)
+        if self.lookup_view.selected_store and self.lookup_view.selected_location:
+            await self.lookup_view.send_results(interaction)
