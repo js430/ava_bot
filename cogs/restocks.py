@@ -458,19 +458,12 @@ class SQLPagination(discord.ui.View):
 class Restocks(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.bot.loop.create_task(self.init_db())
         self.daily_summary_task.start() 
+        
     @property
-    def pool(self) -> asyncpg.Pool:
+    def pool(self) -> asyncpg.Pool | None:
         return getattr(self.bot, "db_pool", None)
     
-    async def init_db(self):
-        """Initialize asyncpg connection pool using Railway DATABASE_URL"""
-        try:
-            self.pool = await asyncpg.create_pool(DATABASE_URL)
-            logger.info("✅ Database pool initialized (Railway).")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize database pool: {e}")
     # -----------------------------
     # Daily Summary Task
     # -----------------------------
