@@ -43,25 +43,15 @@ intents.members = True
 # -----------------------------
 class MyBot(commands.Bot):
     async def setup_hook(self):
-        """Runs ONCE at startup, before connecting to Discord."""
-
         # Load cogs
-        for cog in (
-            "cogs.database",
-            "cogs.restocks",
-            "cogs.raffle",
-        ):
-            try:
-                await self.load_extension(cog)
-                logger.info(f"✅ Loaded cog: {cog}")
-            except Exception as e:
-                logger.error(f"❌ Failed to load cog {cog}: {e}")
+        for cog in ("cogs.database", "cogs.restocks", "cogs.raffle"):
+            await self.load_extension(cog)
 
         # Register persistent views
-        self.add_view(RestockLookupView())
+        self.add_view(RestockLookupView())  # only if safe without db_pool
 
         # Start background tasks
-        auto_cleanup.start()
+        auto_cleanup.start(self)
 
         # Post persistent embed
         await post_lookup_embed(self)
@@ -69,13 +59,12 @@ class MyBot(commands.Bot):
         # Sync slash commands
         for guild_id in GUILD_IDS:
             await self.tree.sync(guild=discord.Object(id=guild_id))
-            logger.info(f"✅ Synced commands for guild {guild_id}")
 
 # -----------------------------
 # 🧹 Auto cleanup task
 # -----------------------------
 @tasks.loop(minutes=1)
-async def auto_cleanup():
+async def auto_cleanup(bot: commands.Bot):
     channel = bot.get_channel(TARGET_CHANNEL_ID)
     if not isinstance(channel, discord.TextChannel):
         return
@@ -121,7 +110,7 @@ async def post_lookup_embed(bot: commands.Bot):
 # 🤖 Instantiate bot
 # -----------------------------
 bot = MyBot(
-    command_prefix="!",
+    command_prefix="/",
     intents=intents,
 )
 
