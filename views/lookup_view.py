@@ -6,7 +6,7 @@ class RestockLookupView(discord.ui.View):
         super().__init__(timeout=None)
 
     @discord.ui.button(
-        label="🔍 Look up restocks",
+        label="🔍 Look up restock history for specific location",
         style=discord.ButtonStyle.primary,
         custom_id="restock_lookup_button"
     )

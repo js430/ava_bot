@@ -2,8 +2,9 @@ import discord
 from utils.paginator import RestockPaginator
 
 class RestockLookupModal(discord.ui.Modal, title="Restock Lookup"):
-    store_name = discord.ui.TextInput(label="Store name", required=True)
     location = discord.ui.TextInput(label="Location", required=True)
+    store_name = discord.ui.TextInput(label="Store name", required=True)
+    
 
     async def on_submit(self, interaction: discord.Interaction):
         pool = interaction.client.db_pool
