@@ -9,17 +9,21 @@ class RestockPaginator(discord.ui.View):
         self.per_page = 5
 
     def embed(self):
-        embed = discord.Embed(title="📦 Restock Results")
+        store = self.rows[0]["store_name"]
+        location = self.rows[0]["location"]     
+        embed = discord.Embed(title=f"📦 Restock Results for {location} {store}")
 
         start = self.page * self.per_page
         end = start + self.per_page
-
+        
         for r in self.rows[start:end]:
+            dt = r["date"]
+            unix_ts = int(dt.timestamp())
             embed.add_field(
-                name=f"{r['store_name']} – {r['location']}",
-                value=r['date'].strftime("%Y-%m-%d %I:%M %p"),
-                inline=False
-            )
+            name=f"{dt.strftime('%A')} • <t:{unix_ts}:R>",
+            value=dt.strftime("%B %d, %Y • %I:%M %p"),
+            inline=False
+        )
 
         embed.set_footer(
             text=f"Page {self.page + 1} / {((len(self.rows) - 1) // self.per_page) + 1}"
