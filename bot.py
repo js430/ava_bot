@@ -52,7 +52,7 @@ async def load_cogs():
         "cogs.database",
         "cogs.restocks",
         "cogs.raffle",
-        # "cogs.utils",
+        "cogs.utils",
     ]
 
     for cog in cogs:
