@@ -112,7 +112,7 @@ async def post_lookup_embed():
         color=discord.Color.blue()
     )
 
-    await channel.send(embed=embed, view=RestockLookupView(user=None))
+    await channel.send(embed=embed, view=RestockLookupView())
 
 
 
@@ -125,7 +125,7 @@ async def on_ready():
     logger.info("------")
     await bot.change_presence(activity=discord.Game("Tracking restocks 👀"))
     auto_cleanup.start()
-    bot.add_view(RestockLookupView(user=None))
+    bot.add_view(RestockLookupView())
     await post_lookup_embed()
      # -----------------------------
     # 🌐 Auto-sync slash commands
