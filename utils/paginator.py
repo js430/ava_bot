@@ -1,4 +1,5 @@
 import discord
+from zoneinfo import ZoneInfo
 
 class RestockPaginator(discord.ui.View):
     def __init__(self, rows, user):
@@ -17,7 +18,7 @@ class RestockPaginator(discord.ui.View):
         end = start + self.per_page
         
         for r in self.rows[start:end]:
-            dt = r["date"]
+            dt = r["date"].astimezone(ZoneInfo("America/New_York"))
             unix_ts = int(dt.timestamp())
             embed.add_field(
             name=f"{dt.strftime('%A')} • <t:{unix_ts}:R>",
