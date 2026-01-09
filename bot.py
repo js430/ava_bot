@@ -6,6 +6,7 @@ from datetime import datetime, timezone, timedelta
 import discord
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
+import re
 
 from views.lookup_view import RestockLookupView
 
@@ -17,6 +18,8 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 
 GUILD_IDS = [1406738815854317658]
 TARGET_CHANNEL_ID = 1407118323749224531
+ONLINE_CHANNEL_ID= 1406755535599964261
+EVENT_CHANNEL_ID = 1426387500334583838
 EXEMPT_ROLE_IDS = [1406753334051737631]
 LOOKUP_CHANNEL_ID = 1458253543344570440
 DELETE_AFTER_SECONDS = 300
@@ -72,7 +75,7 @@ async def auto_cleanup():
     cutoff = now - timedelta(seconds=DELETE_AFTER_SECONDS)
 
     # Use channel.history to get messages
-    async for message in channel.history(limit=200, oldest_first=False):
+    async for message in channel.history(limit=500, oldest_first=False):
         # Skip bot messages
         if message.author.bot:
             continue
@@ -89,6 +92,66 @@ async def auto_cleanup():
             except discord.Forbidden:
                 print(f"Missing permissions to delete message {message.id}")
 
+@tasks.loop(minutes=1)
+async def auto_cleanup_online():
+    channel = bot.get_channel(ONLINE_CHANNEL_ID)
+    channel2 = bot.get_channel(EVENT_CHANNEL_ID)
+    if not channel or not isinstance(channel, discord.TextChannel):
+        return
+
+    now = datetime.now(tz=timezone.utc)
+    cutoff = now - timedelta(seconds=DELETE_AFTER_SECONDS)
+
+    # Use channel.history to get messages
+    async for message in channel.history(limit=500, oldest_first=False):
+        # Skip bot messages
+        if message.author.bot:
+            continue
+        # Skip exempt roles
+        if any(role.id in EXEMPT_ROLE_IDS for role in message.author.roles):
+            continue
+        # Only delete messages older than cutoff
+        if message.created_at < cutoff and message_has_link(message):
+            try:
+                await message.delete()
+                await asyncio.sleep(1)  # 1-second delay to avoid rate limits
+            except discord.NotFound:
+                continue
+            except discord.Forbidden:
+                print(f"Missing permissions to delete message {message.id}")
+    async for message in channel2.history(limit=200, oldest_first=False):
+        # Skip bot messages
+        if message.author.bot:
+            continue
+        # Skip exempt roles
+        if any(role.id in EXEMPT_ROLE_IDS for role in message.author.roles):
+            continue
+        # Only delete messages older than cutoff
+        if message.created_at < cutoff and message_has_link(message):
+            try:
+                await message.delete()
+                await asyncio.sleep(1)  # 1-second delay to avoid rate limits
+            except discord.NotFound:
+                continue
+            except discord.Forbidden:
+                print(f"Missing permissions to delete message {message.id}")
+
+URL_REGEX = re.compile(r"(https?://|www\.)\S+", re.IGNORECASE)
+
+def message_has_link(message: discord.Message) -> bool:
+    # Plain text URLs
+    if URL_REGEX.search(message.content):
+        return True
+
+    # Attachments (images, files, videos)
+    if message.attachments:
+        return True
+
+    # Embedded links (auto-unfurled URLs)
+    if message.embeds:
+        return True
+
+    return False
 # -----------------------------
 # 📌 Persistent lookup embed
 # -----------------------------
@@ -125,6 +188,7 @@ async def on_ready():
     logger.info("------")
     await bot.change_presence(activity=discord.Game("Tracking restocks 👀"))
     auto_cleanup.start()
+    auto_cleanup_online.start()
     bot.add_view(RestockLookupView())
     await post_lookup_embed()
      # -----------------------------
