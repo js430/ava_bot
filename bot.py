@@ -113,7 +113,7 @@ async def auto_cleanup_online():
             if any(role.id in EXEMPT_ROLE_IDS for role in message.author.roles):
                 continue
         # Only delete messages older than cutoff
-        if message.created_at < cutoff and message_has_link(message):
+        if message.created_at < cutoff and not message_has_link(message):
             try:
                 await message.delete()
                 await asyncio.sleep(1)  # 1-second delay to avoid rate limits
@@ -126,10 +126,11 @@ async def auto_cleanup_online():
         if message.author.bot:
             continue
         # Skip exempt roles
-        if any(role.id in EXEMPT_ROLE_IDS for role in message.author.roles):
-            continue
+        if isinstance(message.author, discord.Member):
+            if any(role.id in EXEMPT_ROLE_IDS for role in message.author.roles):
+                continue
         # Only delete messages older than cutoff
-        if message.created_at < cutoff and message_has_link(message):
+        if message.created_at < cutoff and not message_has_link(message):
             try:
                 await message.delete()
                 await asyncio.sleep(1)  # 1-second delay to avoid rate limits
