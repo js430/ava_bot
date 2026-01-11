@@ -469,10 +469,10 @@ class Restocks(commands.Cog):
     # -----------------------------
     @tasks.loop(minutes=1)
     async def daily_summary_task(self):
-        logger.info("Starting daily summary task")
         eastern = ZoneInfo("America/New_York")
         now = datetime.now(eastern)
         if now.hour == SUMMARY_HOUR and now.minute == 0:
+            logger.info("Starting daily summary task")
             channel = self.bot.get_channel(SUMMARY_CHANNEL_ID)
             if channel:
                 await self.send_daily_summary(channel)
@@ -480,7 +480,7 @@ class Restocks(commands.Cog):
     async def send_daily_summary(self, channel: discord.TextChannel):
         """Fetch restocks from the database and send a summary embed."""
         eastern = ZoneInfo("America/New_York")
-        if not hasattr(self.bot, "pool") or not self.pool:
+        if not hasattr(self.bot, "db_pool") or not self.pool:
             return
 
         today = datetime.now(ZoneInfo("America/New_York")).date()
