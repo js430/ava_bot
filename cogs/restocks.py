@@ -469,6 +469,7 @@ class Restocks(commands.Cog):
     # -----------------------------
     @tasks.loop(minutes=1)
     async def daily_summary_task(self):
+        logger.info("Starting daily summary task")
         eastern = ZoneInfo("America/New_York")
         now = datetime.now(eastern)
         if now.hour == SUMMARY_HOUR and now.minute == 0:

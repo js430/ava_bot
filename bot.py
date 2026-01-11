@@ -54,8 +54,7 @@ async def load_cogs():
     cogs = [
         "cogs.database",
         "cogs.restocks",
-        "cogs.raffle",
-        "cogs.utils",
+        "cogs.raffle"
     ]
 
     for cog in cogs:
@@ -113,7 +112,7 @@ async def auto_cleanup_online():
             if any(role.id in EXEMPT_ROLE_IDS for role in message.author.roles):
                 continue
         # Only delete messages older than cutoff
-        if message.created_at < cutoff and not message_has_link(message):
+        if (message.created_at < cutoff and not message_has_link(message)):
             try:
                 await message.delete()
                 await asyncio.sleep(1)  # 1-second delay to avoid rate limits
