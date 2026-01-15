@@ -6,6 +6,7 @@ from discord import app_commands
 import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import io
 
 logger = logging.getLogger("database")
 logger.setLevel(logging.INFO)
@@ -138,6 +139,55 @@ class Database(commands.Cog):
             logger.exception("❌ Failed to insert manual restock")
             await interaction.response.send_message(
                 "❌ Failed to insert restock report.",
+                ephemeral=True
+            )
+    
+    # -----------------------------
+    # Export CSV command
+    # -----------------------------
+    @app_commands.command(
+        name="export_csv",
+        description="Export restock_reports table to CSV"
+    )
+    @app_commands.guilds(discord.Object(id=GUILD_ID))
+    async def export_csv(self, interaction: discord.Interaction):
+        member = interaction.user
+
+        if not any(role.id == ALLOWED_ROLE_ID for role in member.roles):
+            await interaction.response.send_message(
+                "❌ You do not have permission to use this command.",
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.defer(thinking=True)  # lets user know bot is working
+
+        buffer = io.StringIO()
+
+        try:
+            async with self.bot.db_pool.acquire() as conn:
+                await conn.copy_to_writer(
+                    """
+                    COPY (
+                        SELECT *
+                        FROM restock_reports
+                    ) TO STDOUT WITH CSV HEADER
+                    """,
+                    buffer.write
+                )
+
+            buffer.seek(0)
+
+            await interaction.followup.send(
+                file=discord.File(fp=buffer, filename="restock_reports.csv")
+            )
+
+            logger.info(f"✅ {member} exported restock_reports CSV.")
+
+        except Exception as e:
+            logger.exception("❌ Failed to export CSV")
+            await interaction.followup.send(
+                "❌ Failed to export CSV.",
                 ephemeral=True
             )
     
