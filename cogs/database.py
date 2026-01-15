@@ -166,16 +166,14 @@ class Database(commands.Cog):
 
         try:
             async with self.bot.db_pool.acquire() as conn:
-
-                # This is the correct asyncpg method for streaming CSV
+                # Use COPY TO STDOUT to stream CSV
                 async with conn.transaction():
-                    reader = await conn.copy_from_query(
-                        "SELECT * FROM restock_reports",
-                        output_format='csv',
-                        header=True
-                    )
-                    async for line in reader:
-                        buffer.write(line)
+                    # copy_to_reader returns an async generator of bytes
+                    async for chunk in conn.copy_to_reader(
+                        "COPY restock_reports TO STDOUT WITH CSV HEADER"
+                    ):
+                        buffer.write(chunk.decode())  # convert bytes -> str
+
 
             buffer.seek(0)
 
