@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import io
+import csv
 
 logger = logging.getLogger("database")
 logger.setLevel(logging.INFO)
@@ -155,33 +156,36 @@ class Database(commands.Cog):
 
         if not any(role.id == ALLOWED_ROLE_ID for role in member.roles):
             await interaction.response.send_message(
-                "❌ You do not have permission to use this command.",
-                ephemeral=True
-            )
+            "❌ You do not have permission to use this command.",
+            ephemeral=True)
             return
 
-        await interaction.response.defer(thinking=True)  # lets user know bot is working
-
-        buffer = io.StringIO()
+        await interaction.response.defer(thinking=True)
 
         try:
             async with self.bot.db_pool.acquire() as conn:
-                # Use COPY TO STDOUT to stream CSV
-                async with conn.transaction():
-                    # copy_to_reader returns an async generator of bytes
-                    async for chunk in conn.copy_to_reader(
-                        "COPY restock_reports TO STDOUT WITH CSV HEADER"
-                    ):
-                        buffer.write(chunk.decode())  # convert bytes -> str
+                rows = await conn.fetch("SELECT * FROM restock_reports")
 
+            if not rows:
+                await interaction.followup.send("No data to export.", ephemeral=True)
+                return
+
+            # Write CSV in memory
+            buffer = io.StringIO()
+            writer = csv.writer(buffer)
+
+            # Write header
+            writer.writerow(rows[0].keys())
+
+            # Write all rows
+            for row in rows:
+                writer.writerow(row.values())
 
             buffer.seek(0)
 
             await interaction.followup.send(
                 file=discord.File(fp=buffer, filename="restock_reports.csv")
             )
-
-            logger.info(f"✅ {member} exported restock_reports CSV.")
 
         except Exception as e:
             logger.exception("❌ Failed to export CSV")
