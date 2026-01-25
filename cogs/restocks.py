@@ -549,7 +549,7 @@ class Restocks(commands.Cog):
                 except:
                     pass
 
-    async def run_custom_sql(self, sql: str):
+    async def run_custom_sql(self, sql: str, *args):
         """
         Executes a raw SQL query on the Railway Postgres database.
         """
@@ -559,7 +559,7 @@ class Restocks(commands.Cog):
 
         try:
             async with self.pool.acquire() as conn:
-                rows = await conn.fetch(sql)
+                rows = await conn.fetch(sql, *args)
                 return rows
         except Exception as e:
             print(f"[SQL ERROR] {e}")
