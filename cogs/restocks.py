@@ -767,13 +767,13 @@ class Restocks(commands.Cog):
                 else:
                     v = self.format_value(v)
 
-                parts.append(f"**{k}:** {v}")
+                parts.append(f"{v}")
 
             formatted_rows.append("\n".join(parts))
 
         # Chunk rows so each embed stays within limits (10 rows per page)
         pages = []
-        for chunk in self.chunk(formatted_rows, 10):
+        for chunk in self.chunk(formatted_rows, 20):
             embed = discord.Embed(
                 title="📊 SQL Query Results",
                 description=f"```sql\n{sql}\n```",
