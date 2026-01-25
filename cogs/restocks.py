@@ -143,7 +143,7 @@ class LocationChoiceView(discord.ui.View):
     async def create(cls, interaction, store_choice, command_name, cog):
         self = cls(interaction, store_choice, command_name, cog)
 
-        raw_locations = await cog.run_custom_sql(
+        raw_locations = await self.cog.run_custom_sql (
             """
             SELECT location
             FROM locations
