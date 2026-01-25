@@ -141,7 +141,8 @@ class LocationChoiceView(discord.ui.View):
 
         # Example locations, can extend
         locations = ["Fair Lakes", "Springfield", "Reston", "7C","Chantilly", "Mosaic", "South Riding", "Potomac Yard", "Sterling/PR", "Ashburn", "Skyline","Kingstowne", "Gainesville", "Burke", "Manassas", "Leesburg", "Woodbridge", "Tysons"]
-
+        raw_locations= cog.run_custom_sql(f'select location from locations where store_name=\'{store_choice}\' order by location desc' )
+        locations=[r["location"] for r in raw_locations]
         for location in locations:
             self.add_item(LocationButton(location, store_choice, self.command_name, self.cog))
 
