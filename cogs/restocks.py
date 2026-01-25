@@ -95,7 +95,7 @@ class StoreChoiceView(discord.ui.View):
     async def handle_store_choice(self, interaction: discord.Interaction, store: str):
         await interaction.response.edit_message(
             content=f"✅ You chose **{store}**.\nNow choose a **location:**",
-            view=LocationChoiceView(self.interaction, store, self.command_name, self.cog)
+            view=await LocationChoiceView.create(self.interaction, store, self.command_name, self.cog)
         )
 
     @discord.ui.button(label="Target", style=discord.ButtonStyle.primary)
@@ -128,26 +128,43 @@ class StoreNameModal(discord.ui.Modal, title="Enter Store Name"):
         custom_name = self.store_name.value.strip()
         await interaction.response.edit_message(
             content=f"✅ You entered **{custom_name}**.\nNow choose a **location:**",
-            view=LocationChoiceView(self.interaction, custom_name, self.command_name, self.cog)
+            view=await LocationChoiceView.create(self.interaction, custom_name, self.command_name, self.cog)
         )
 
 class LocationChoiceView(discord.ui.View):
-    def __init__(self, interaction: discord.Interaction, store_choice: str, command_name: str, cog: "Restocks"):
+    def __init__(self, interaction, store_choice, command_name, cog):
         super().__init__(timeout=60)
         self.interaction = interaction
         self.store_choice = store_choice
         self.command_name = command_name
         self.cog = cog
 
-        # Example locations, can extend
-        locations = ["Fair Lakes", "Springfield", "Reston", "7C","Chantilly", "Mosaic", "South Riding", "Potomac Yard", "Sterling/PR", "Ashburn", "Skyline","Kingstowne", "Gainesville", "Burke", "Manassas", "Leesburg", "Woodbridge", "Tysons"]
-        raw_locations= cog.run_custom_sql(f'select location from locations where store_name=\'{store_choice}\' order by location desc' )
-        locations=[r["location"] for r in raw_locations]
-        for location in locations:
-            self.add_item(LocationButton(location, store_choice, self.command_name, self.cog))
+    @classmethod
+    async def create(cls, interaction, store_choice, command_name, cog):
+        self = cls(interaction, store_choice, command_name, cog)
 
-        # Add the "Other" option
-        self.add_item(LocationOtherButton(store_choice, self.command_name, self.cog))
+        raw_locations = await cog.run_custom_sql(
+            """
+            SELECT location
+            FROM locations
+            WHERE store_name = $1
+            ORDER BY location DESC
+            """,
+            store_choice
+        )
+
+        locations = [r["location"] for r in raw_locations]
+
+        for location in locations:
+            self.add_item(
+                LocationButton(location, store_choice, command_name, cog)
+            )
+
+        self.add_item(
+            LocationOtherButton(store_choice, command_name, cog)
+        )
+
+        return self
 
 class LocationButton(discord.ui.Button):
     def __init__(self, location: str, store_choice: str, command_name: str, cog: "Restocks"):
