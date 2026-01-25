@@ -147,7 +147,7 @@ class LocationChoiceView(discord.ui.View):
             """
             SELECT location
             FROM locations
-            WHERE store_name = $1
+            WHERE store_type = $1
             ORDER BY location DESC
             """,
             store_choice
