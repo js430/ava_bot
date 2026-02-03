@@ -655,7 +655,21 @@ class Restocks(commands.Cog):
             "walmart": 1406754750778572831,
             "bestbuy": 1406760883023118569
         }
+        # Determine current time in Eastern Time
+        now = datetime.now(ZoneInfo("America/New_York"))
 
+        # Log the command usage in the database
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute(
+                "INSERT INTO command_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
+                interaction.user.id,
+                now,
+                "info"
+            )
+            logger.info(f"✅ Logged /info by {interaction.user} ({interaction.user.id}) at {now}")
+        except Exception as e:
+            logger.error(f"❌ Failed to log /empty usage: {e}")
         chosen_roles = [r for r in (role1, role2) if r is not None]
         mentions = " ".join(f"<@&{role_pings.get(r.value)}>" for r in chosen_roles if r.value in role_pings)
 
