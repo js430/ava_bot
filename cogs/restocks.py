@@ -655,7 +655,13 @@ class Restocks(commands.Cog):
         embed = discord.Embed(title="Info", description=message, color=discord.Color.blue())
         await interaction.response.defer(thinking=False, ephemeral=True)
         await interaction.followup.send("Success", ephemeral=True)
-        await interaction.channel.send(f"{mentions}", embed=embed)
+        sent_message=await interaction.channel.send(f"{mentions}", embed=embed)
+        await interaction.channel.create_thread(
+                    name='Info thread',
+                    type=discord.ChannelType.public_thread,
+                    message=sent_message
+                )
+        
 
     @app_commands.command(
     name="empty",
