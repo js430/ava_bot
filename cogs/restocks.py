@@ -238,8 +238,12 @@ class LocationButton(discord.ui.Button):
                 thread = await channel.create_thread(
                     name=thread_name,
                     type=discord.ChannelType.public_thread,
-                    message=sent_message
+                    message=sent_message,
+                    slowmode_delay=15
                 )
+                await asyncio.sleep(120)
+                await thread.edit(slowmode_delay=0)
+
                 break
 
         if thread is None:
@@ -357,8 +361,11 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
                 thread = await channel.create_thread(
                     name=thread_name,
                     type=discord.ChannelType.public_thread,
-                    message=sent_message
+                    message=sent_message,
+                    slowmode_delay=15
                 )
+                await asyncio.sleep(120)
+                await thread.edit(slowmode_delay=0)
                 break
 
         if thread is None:
@@ -660,7 +667,7 @@ class Restocks(commands.Cog):
                     name='Info thread',
                     type=discord.ChannelType.public_thread,
                     message=sent_message,
-                    slowmode_delay=30
+                    slowmode_delay=15
                 )
         await asyncio.sleep(120)
         await thread.edit(slowmode_delay=0)
