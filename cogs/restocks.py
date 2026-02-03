@@ -656,11 +656,15 @@ class Restocks(commands.Cog):
         await interaction.response.defer(thinking=False, ephemeral=True)
         await interaction.followup.send("Success", ephemeral=True)
         sent_message=await interaction.channel.send(f"{mentions}", embed=embed)
-        await interaction.channel.create_thread(
+        thread= await interaction.channel.create_thread(
                     name='Info thread',
                     type=discord.ChannelType.public_thread,
-                    message=sent_message
+                    message=sent_message,
+                    slowmode_delay=30
                 )
+        await asyncio.sleep(120)
+        await thread.edit(slowmode_delay=0)
+        return thread
         
 
     @app_commands.command(
