@@ -85,17 +85,49 @@ SUMMARY_CHANNEL_ID = 1431090547606687804  # 👈 Replace with your channel ID
 SUMMARY_HOUR = 22  # 24-hour format (22 = 10 PM Eastern)
 NY_TZ = pytz.timezone("America/New_York")
 
-class StoreChoiceView(discord.ui.View):
+
+class AreaChoiceView(discord.ui.View):
     def __init__(self, interaction: discord.Interaction, command_name: str, cog: "Restocks"):
         super().__init__(timeout=60)
         self.interaction = interaction
         self.command_name = command_name
         self.cog = cog
 
+    async def handle_area_choice(self, interaction: discord.Interaction, area: str):
+        await interaction.response.edit_message(
+            content=f"✅ You chose **{area}**.\nNow choose a **store:**",
+            view=await StoreChoiceView(self.interaction, area, self.command_name, self.cog)
+        )
+
+    @discord.ui.button(label="NOVA", style=discord.ButtonStyle.primary)
+    async def target(self, interaction: discord.Interaction, _):
+        await self.handle_area_choice(interaction, "VA")
+
+    @discord.ui.button(label="Central VA", style=discord.ButtonStyle.primary)
+    async def bestbuy(self, interaction: discord.Interaction, _):
+        await self.handle_area_choice(interaction, "CVA")
+
+    @discord.ui.button(label="MD", style=discord.ButtonStyle.primary)
+    async def walmart(self, interaction: discord.Interaction, _):
+        await self.handle_area_choice(interaction, "MD")
+        
+    @discord.ui.button(label="DC", style=discord.ButtonStyle.primary)
+    async def walmart(self, interaction: discord.Interaction, _):
+        await self.handle_area_choice(interaction, "DC")
+
+    
+class StoreChoiceView(discord.ui.View):
+    def __init__(self, interaction: discord.Interaction, area: str, command_name: str, cog: "Restocks"):
+        super().__init__(timeout=60)
+        self.interaction = interaction
+        self.command_name = command_name
+        self.cog = cog
+        self.area=area
+
     async def handle_store_choice(self, interaction: discord.Interaction, store: str):
         await interaction.response.edit_message(
             content=f"✅ You chose **{store}**.\nNow choose a **location:**",
-            view=await LocationChoiceView.create(self.interaction, store, self.command_name, self.cog)
+            view=await LocationChoiceView.create(self.interaction, self.area, store, self.command_name, self.cog)
         )
 
     @discord.ui.button(label="Target", style=discord.ButtonStyle.primary)
@@ -109,6 +141,10 @@ class StoreChoiceView(discord.ui.View):
     @discord.ui.button(label="Walmart", style=discord.ButtonStyle.primary)
     async def walmart(self, interaction: discord.Interaction, _):
         await self.handle_store_choice(interaction, "Walmart")
+        
+    @discord.ui.button(label="Costco", style=discord.ButtonStyle.primary)
+    async def walmart(self, interaction: discord.Interaction, _):
+        await self.handle_store_choice(interaction, "Costco")
 
     @discord.ui.button(label="Other", style=discord.ButtonStyle.secondary)
     async def other(self, interaction: discord.Interaction, _):
@@ -132,25 +168,28 @@ class StoreNameModal(discord.ui.Modal, title="Enter Store Name"):
         )
 
 class LocationChoiceView(discord.ui.View):
-    def __init__(self, interaction, store_choice, command_name, cog):
+    def __init__(self, interaction, area, store_choice, command_name, cog):
         super().__init__(timeout=60)
         self.interaction = interaction
         self.store_choice = store_choice
         self.command_name = command_name
         self.cog = cog
+        self.area = area
 
     @classmethod
-    async def create(cls, interaction, store_choice, command_name, cog):
-        self = cls(interaction, store_choice, command_name, cog)
+    async def create(cls, interaction, area, store_choice, command_name, cog):
+        self = cls(interaction, area, store_choice, command_name, cog)
         
         raw_locations = await self.cog.run_custom_sql (
             """
             SELECT location
             FROM locations
             WHERE store_type = $1
+            AND state = $2
             ORDER BY location ASC
             """,
-            store_choice
+            store_choice,
+            area
         )
 
         locations = [r["location"] for r in raw_locations]
@@ -619,14 +658,14 @@ class Restocks(commands.Cog):
     @app_commands.command(name="restock", description="Choose a store and location to create a thread.")
     @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def restock(self, interaction: discord.Interaction):
-        view = StoreChoiceView(interaction, "restock", self)
+        view = AreaChoiceView(interaction, "restock", self)
         await interaction.response.send_message("Choose a **store**:", view=view, ephemeral=True)
         await self.log_command_use(interaction, "restock")
 
     @app_commands.command(name="test_restock", description="Test restock thread creation.")
     @app_commands.guilds(discord.Object(id=1406738815854317658))
     async def test_restock(self, interaction: discord.Interaction):
-        view = StoreChoiceView(interaction, "test_restock", self)
+        view = AreaChoiceView(interaction, "test_restock", self)
         await interaction.response.send_message("Choose a **store**:", view=view, ephemeral=True)
         #await self.log_command_use(interaction, "test_restock")
 
