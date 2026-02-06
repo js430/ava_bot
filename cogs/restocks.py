@@ -142,7 +142,7 @@ class LocationChoiceView(discord.ui.View):
     @classmethod
     async def create(cls, interaction, store_choice, command_name, cog):
         self = cls(interaction, store_choice, command_name, cog)
-
+        
         raw_locations = await self.cog.run_custom_sql (
             """
             SELECT location
@@ -187,18 +187,16 @@ class LocationButton(discord.ui.Button):
 
         # Determine channels and roles based on location
         if not TEST:
-            if loc_key in nova:
+            if 'nova' in interaction.channel.name:
                 channel_ids.append(alert_channels.get("nova"))
-                role_ids.extend([role_pings.get("nova"), role_pings.get(store_key)])
-            elif loc_key in notsonova:
-                channel_ids.append(alert_channels.get("nova"))
-                role_ids.extend([role_pings.get("notsonova"), role_pings.get(store_key)])
-            elif loc_key in maryland:
+                role_ids.extend([role_pings.get("nova"), role_pings.get(store_key),role_pings.get("notsonova")])
+            elif 'md' in interaction.channel.name:
                 channel_ids.append(alert_channels.get("md"))
                 role_ids.extend([role_pings.get("maryland"), role_pings.get(store_key)])
-            elif loc_key in dc:
+            elif 'dc' in interaction.channel.name:
                 channel_ids.append(alert_channels.get("dc"))
                 role_ids.extend([role_pings.get("dc"), role_pings.get(store_key)])
+            
 
         # Fallbacks
         channel_ids = [cid for cid in channel_ids if cid is not None]
