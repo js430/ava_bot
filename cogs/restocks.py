@@ -96,7 +96,7 @@ class AreaChoiceView(discord.ui.View):
     async def handle_area_choice(self, interaction: discord.Interaction, area: str):
         await interaction.response.edit_message(
             content=f"✅ You chose **{area}**.\nNow choose a **store:**",
-            view=await StoreChoiceView(self.interaction, area, self.command_name, self.cog)
+            view=StoreChoiceView(self.interaction, area, self.command_name, self.cog)
         )
 
     @discord.ui.button(label="NOVA", style=discord.ButtonStyle.primary)
