@@ -100,19 +100,19 @@ class AreaChoiceView(discord.ui.View):
         )
 
     @discord.ui.button(label="NOVA", style=discord.ButtonStyle.primary)
-    async def target(self, interaction: discord.Interaction, _):
+    async def nova(self, interaction: discord.Interaction, _):
         await self.handle_area_choice(interaction, "VA")
 
     @discord.ui.button(label="Central VA", style=discord.ButtonStyle.primary)
-    async def bestbuy(self, interaction: discord.Interaction, _):
+    async def centralva(self, interaction: discord.Interaction, _):
         await self.handle_area_choice(interaction, "CVA")
 
     @discord.ui.button(label="MD", style=discord.ButtonStyle.primary)
-    async def walmart(self, interaction: discord.Interaction, _):
+    async def md(self, interaction: discord.Interaction, _):
         await self.handle_area_choice(interaction, "MD")
         
     @discord.ui.button(label="DC", style=discord.ButtonStyle.primary)
-    async def walmart(self, interaction: discord.Interaction, _):
+    async def dc(self, interaction: discord.Interaction, _):
         await self.handle_area_choice(interaction, "DC")
 
     
@@ -143,7 +143,7 @@ class StoreChoiceView(discord.ui.View):
         await self.handle_store_choice(interaction, "Walmart")
         
     @discord.ui.button(label="Costco", style=discord.ButtonStyle.primary)
-    async def walmart(self, interaction: discord.Interaction, _):
+    async def costco(self, interaction: discord.Interaction, _):
         await self.handle_store_choice(interaction, "Costco")
 
     @discord.ui.button(label="Other", style=discord.ButtonStyle.secondary)
