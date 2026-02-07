@@ -197,7 +197,7 @@ class LocationChoiceView(discord.ui.View):
 
         for location in locations:
             self.add_item(
-                LocationButton(location, store_choice, command_name, cog)
+                LocationButton(location, area, store_choice, command_name, cog)
             )
 
         self.add_item(
@@ -207,12 +207,13 @@ class LocationChoiceView(discord.ui.View):
         return self
 
 class LocationButton(discord.ui.Button):
-    def __init__(self, location: str, store_choice: str, command_name: str, cog: "Restocks"):
+    def __init__(self, location: str, area:str, store_choice: str, command_name: str, cog: "Restocks"):
         super().__init__(label=location, style=discord.ButtonStyle.success)
         self.location = location
         self.store_choice = store_choice
         self.command_name = command_name
         self.cog = cog
+        self.area = area
     @property
     def pool(self) -> asyncpg.Pool:
         return self.cog.pool
@@ -227,16 +228,16 @@ class LocationButton(discord.ui.Button):
 
         # Determine channels and roles based on location
         if not TEST:
-            if 'nova' in interaction.channel.name:
+            if self.area=='VA':
                 channel_ids.append(alert_channels.get("nova"))
                 role_ids.extend([role_pings.get("nova"), role_pings.get(store_key),role_pings.get("notsonova")])
-            elif 'md' in interaction.channel.name:
+            elif self.area=='MD':
                 channel_ids.append(alert_channels.get("md"))
                 role_ids.extend([role_pings.get("maryland"), role_pings.get(store_key)])
-            elif 'dc' in interaction.channel.name:
+            elif self.area=='DC':
                 channel_ids.append(alert_channels.get("dc"))
                 role_ids.extend([role_pings.get("dc"), role_pings.get(store_key)])
-            elif 'rva' in interaction.channel.name:
+            elif self.area=='CVA':
                 channel_ids.append(alert_channels.get("rva"))
                 role_ids.extend([role_pings.get("rva"), role_pings.get(store_key)])
             
