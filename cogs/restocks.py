@@ -148,23 +148,24 @@ class StoreChoiceView(discord.ui.View):
 
     @discord.ui.button(label="Other", style=discord.ButtonStyle.secondary)
     async def other(self, interaction: discord.Interaction, _):
-        await interaction.response.send_modal(StoreNameModal(self.interaction, self.command_name, self.cog))
+        await interaction.response.send_modal(StoreNameModal(self.interaction, self.area, self.command_name, self.cog))
 
 
 class StoreNameModal(discord.ui.Modal, title="Enter Store Name"):
     store_name = discord.ui.TextInput(label="Store Name", placeholder="Enter custom store name")
 
-    def __init__(self, interaction: discord.Interaction, command_name: str, cog: "Restocks"):
+    def __init__(self, interaction: discord.Interaction,area: str, command_name: str, cog: "Restocks"):
         super().__init__()
         self.interaction = interaction
         self.command_name = command_name
         self.cog = cog
+        self.area= area
 
     async def on_submit(self, interaction: discord.Interaction):
         custom_name = self.store_name.value.strip()
         await interaction.response.edit_message(
             content=f"✅ You entered **{custom_name}**.\nNow choose a **location:**",
-            view=await LocationChoiceView.create(self.interaction, custom_name, self.command_name, self.cog)
+            view=await LocationChoiceView.create(self.interaction, self.area, custom_name, self.command_name, self.cog)
         )
 
 class LocationChoiceView(discord.ui.View):
