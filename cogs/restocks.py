@@ -16,8 +16,8 @@ TEST=False
 alert_channels={"test":1425953503536484513}
 #alert_channels={"nova": 1425953503536484513, "notsonova":1425953503536484513, "maryland": 1425953503536484513 }
 if not TEST:
-    alert_channels={"nova": 1407118323749224531, "notsonova":1407118323749224531, "md": 1407118364215611574, "general": 1406755535599964261, "dc": 1407118410898210928}
-    role_pings={"nova":1406765992658341908, "notsonova":1406766138163200091, "maryland":1406766061012910191, "target":1406754673100193883, "bestbuy":1406760883023118569, "walmart":1406754750778572831, "dc": 1406765925281304659}
+    alert_channels={"nova": 1407118323749224531, "notsonova":1407118323749224531, "md": 1407118364215611574, "general": 1406755535599964261, "dc": 1407118410898210928, "rva":"1469486121539993835"}
+    role_pings={"nova":1406765992658341908, "notsonova":1406766138163200091, "maryland":1406766061012910191, "target":1406754673100193883, "bestbuy":1406760883023118569, "walmart":1406754750778572831, "dc": 1406765925281304659, "rva":1466608853394395136 }
     nova=['reston', 'fairlakes', 'fl', 'skyline', '7c', '7corners', 'skyline', 'mosaic', 'chantilly', 'dulles', 'ashburn', 'burke', 'springfield', 'gainesville', 'manassas', 'hyblavalley', 'hybla', 'potomacyard', 'py'
         'leesburg', 'southriding', 'pc', 'fallschurch', 'tysons', 'arlington', 'alexandria', 'sterling/pr', 'springfield', 'southriding', 'kingstowne']
     notsonova=['woodbridge','dumfries', 'winchester', 'leesburg']
@@ -235,6 +235,9 @@ class LocationButton(discord.ui.Button):
             elif 'dc' in interaction.channel.name:
                 channel_ids.append(alert_channels.get("dc"))
                 role_ids.extend([role_pings.get("dc"), role_pings.get(store_key)])
+            elif 'rva' in interaction.channel.name:
+                channel_ids.append(alert_channels.get("rva"))
+                role_ids.extend([role_pings.get("rva"), role_pings.get(store_key)])
             
 
         # Fallbacks
@@ -355,10 +358,18 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
 
         # Determine channels and roles based on location
         if not TEST:
-            if interaction.channel.id==1407118323749224531:
-                role_ids.extend([role_pings.get("nova"),role_pings.get("notsonova")])
-            elif interaction.channel.id==1407118364215611574:
-                role_ids.extend([role_pings.get("maryland")])
+            if 'nova' in interaction.channel.name:
+                channel_ids.append(alert_channels.get("nova"))
+                role_ids.extend([role_pings.get("nova"), role_pings.get(store_key),role_pings.get("notsonova")])
+            elif 'md' in interaction.channel.name:
+                channel_ids.append(alert_channels.get("md"))
+                role_ids.extend([role_pings.get("maryland"), role_pings.get(store_key)])
+            elif 'dc' in interaction.channel.name:
+                channel_ids.append(alert_channels.get("dc"))
+                role_ids.extend([role_pings.get("dc"), role_pings.get(store_key)])
+            elif 'rva' in interaction.channel.name:
+                channel_ids.append(alert_channels.get("rva"))
+                role_ids.extend([role_pings.get("rva"), role_pings.get(store_key)])
 
         # Fallbacks
         channel_ids = [cid for cid in channel_ids if cid is not None]
