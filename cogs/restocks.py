@@ -257,12 +257,6 @@ class LocationButton(discord.ui.Button):
         else:
             mentions = f"TEST: IGNORE Alerted"
 
-        # Respond to the user immediately
-        await interaction.response.send_message(
-            content=f"Creating thread for {self.location} {self.store_choice}...",
-            ephemeral=True
-        )
-
         thread = None
         sent_message = None
         bot = self.cog.bot
@@ -293,6 +287,11 @@ class LocationButton(discord.ui.Button):
                     await interaction.channel.send(
                     f"📍 **{self.location} {self.store_choice} ** is empty as of **{current_time}**.")
                 else:
+                    # Respond to the user immediately
+                    await interaction.response.send_message(
+                        content=f"Creating thread for {self.location} {self.store_choice}...",
+                        ephemeral=True
+                    )
                     sent_message = await channel.send(content=f"{self.location} {self.store_choice} {mentions}")
 
                     today_date = datetime.now(ZoneInfo("America/New_York")).date()
