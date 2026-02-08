@@ -272,27 +272,27 @@ class LocationButton(discord.ui.Button):
             channel = bot.get_channel(cid)
             if channel and isinstance(channel, discord.TextChannel):
                 
-                if self.command_name=='empty':
-                    try:
-                        now = datetime.now(ZoneInfo("America/New_York"))
-                        current_time = now.strftime("%I:%M %p")
-                        async with self.pool.acquire() as conn:
-                            await conn.execute(
-                            "INSERT INTO command_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
-                            interaction.user.id,
-                            now,
-                            "empty"
-                        )
-                        logger.info(f"✅ Logged /empty by {interaction.user} ({interaction.user.id}) at {now}")
-                    except Exception as e:
-                        logger.error(f"❌ Failed to log /empty usage: {e}")
+                # if self.command_name=='empty':
+                #     try:
+                #         now = datetime.now(ZoneInfo("America/New_York"))
+                #         current_time = now.strftime("%I:%M %p")
+                #         async with self.pool.acquire() as conn:
+                #             await conn.execute(
+                #             "INSERT INTO command_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
+                #             interaction.user.id,
+                #             now,
+                #             "empty"
+                #         )
+                #         logger.info(f"✅ Logged /empty by {interaction.user} ({interaction.user.id}) at {now}")
+                #     except Exception as e:
+                #         logger.error(f"❌ Failed to log /empty usage: {e}")
 
-                    # Send confirmation message
-                    await interaction.response.defer(thinking=False, ephemeral=True)
-                    await interaction.followup.send("Success", ephemeral=True)
-                    await interaction.channel.send(
-                    f"📍 **{self.location} {self.store_choice} ** is empty as of **{current_time}**.")
-                else:
+                #     # Send confirmation message
+                #     await interaction.response.defer(thinking=False, ephemeral=True)
+                #     await interaction.followup.send("Success", ephemeral=True)
+                #     await interaction.channel.send(
+                #     f"📍 **{self.location} {self.store_choice} ** is empty as of **{current_time}**.")
+                # else:
                     sent_message = await channel.send(content=f"{self.location} {self.store_choice} {mentions}")
 
                     today_date = datetime.now(ZoneInfo("America/New_York")).date()
