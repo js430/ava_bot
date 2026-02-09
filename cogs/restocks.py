@@ -471,9 +471,9 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
                     # Send initial description in thread
                     location_key = f"{loc_key}_{store_key}"
                     if location_key in location_links:
-                        desc = f"Restock at {self.store_choice.title()} in **{self.location.title()}**. [Google maps]({location_links.get(location_key)})"
+                        desc = f"Restock at {self.store_choice.title()} in **{custom_location}**. [Google maps]({location_links.get(location_key)})"
                     else:
-                        desc = f"Restock at {self.store_choice.title()} in **{self.location.title()}**."
+                        desc = f"Restock at {self.store_choice.title()} in **{custom_location}**."
 
                     await thread.send(desc)
                     await asyncio.sleep(120)
