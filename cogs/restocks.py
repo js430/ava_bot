@@ -445,14 +445,14 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
                     await interaction.response.defer(thinking=False, ephemeral=True)
                     await interaction.followup.send("Success", ephemeral=True)
                     await interaction.channel.send(
-                    f"📍 **{self.location} {self.store_choice} ** is empty as of **{current_time}**.")
+                    f"📍 **{custom_location} {self.store_choice} ** is empty as of **{current_time}**.")
                 else:
                    # Respond to the user immediately
                     await interaction.response.send_message(
-                        content=f"Creating thread for {self.location} {self.store_choice}...",
+                        content=f"Creating thread for {custom_location} {self.store_choice}...",
                         ephemeral=True
                     )
-                    sent_message = await channel.send(content=f"{self.location} {self.store_choice} {mentions}")
+                    sent_message = await channel.send(content=f"{custom_location} {self.store_choice} {mentions}")
 
                     today_date = datetime.now(ZoneInfo("America/New_York")).date()
                     formatted = f"{today_date.strftime('%A %B')} {today_date.day}"
