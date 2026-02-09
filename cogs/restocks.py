@@ -201,7 +201,7 @@ class LocationChoiceView(discord.ui.View):
             )
 
         self.add_item(
-            LocationOtherButton(store_choice, command_name, cog)
+            LocationOtherButton(area, store_choice, command_name, cog)
         )
 
         return self
@@ -240,6 +240,8 @@ class LocationButton(discord.ui.Button):
             elif self.area=='CVA':
                 channel_ids.append(alert_channels.get("rva"))
                 role_ids.extend([role_pings.get("rva"), role_pings.get(store_key)])
+            else:
+                channel_ids.append(interaction.channel_id)
             
 
         # Fallbacks
@@ -351,23 +353,25 @@ class LocationButton(discord.ui.Button):
         #     asyncio.create_task(cleanup_thread(interaction, thread, sent_message))
 
 class LocationOtherButton(discord.ui.Button):
-    def __init__(self, store_choice: str, command_name: str, cog: "Restocks"):
+    def __init__(self, area:str, store_choice: str, command_name: str, cog: "Restocks"):
         super().__init__(label="Other", style=discord.ButtonStyle.secondary)
         self.store_choice = store_choice
         self.command_name = command_name
         self.cog = cog
+        self.area=area
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_modal(LocationNameModal(self.store_choice, self.command_name, self.cog))
+        await interaction.response.send_modal(LocationNameModal(self.area, self.store_choice, self.command_name, self.cog))
 
 class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
     location_name = discord.ui.TextInput(label="Location", placeholder="Enter custom location")
 
-    def __init__(self, store_choice: str, command_name: str, cog: "Restocks"):
+    def __init__(self, area:str, store_choice: str, command_name: str, cog: "Restocks"):
         super().__init__()
         self.store_choice = store_choice
         self.cog= cog
         self.command_name=command_name
+        self.area=area
     @property
     def pool(self) -> asyncpg.Pool:
         return self.cog.pool
@@ -382,18 +386,21 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
 
         # Determine channels and roles based on location
         if not TEST:
-            if 'nova' in interaction.channel.name:
+            if self.area=='VA':
                 channel_ids.append(alert_channels.get("nova"))
                 role_ids.extend([role_pings.get("nova"), role_pings.get(store_key),role_pings.get("notsonova")])
-            elif 'md' in interaction.channel.name:
+            elif self.area=='MD':
                 channel_ids.append(alert_channels.get("md"))
                 role_ids.extend([role_pings.get("maryland"), role_pings.get(store_key)])
-            elif 'dc' in interaction.channel.name:
+            elif self.area=='DC':
                 channel_ids.append(alert_channels.get("dc"))
                 role_ids.extend([role_pings.get("dc"), role_pings.get(store_key)])
-            elif 'rva' in interaction.channel.name:
+            elif self.area=='CVA':
                 channel_ids.append(alert_channels.get("rva"))
                 role_ids.extend([role_pings.get("rva"), role_pings.get(store_key)])
+            else:
+                channel_ids.append(interaction.channel_id)
+            
 
         # Fallbacks
         channel_ids = [cid for cid in channel_ids if cid is not None]
