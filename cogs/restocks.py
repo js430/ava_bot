@@ -410,12 +410,6 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
         else:
             mentions = f"TEST: IGNORE Alerted by: {interaction.user.display_name}, {interaction.user.id}"
 
-        # Respond to the user immediately
-        await interaction.response.send_message(
-            content=f"Creating thread for {custom_location} {self.store_choice}...",
-            ephemeral=True
-        )
-
         thread = None
         sent_message = None
         bot = self.cog.bot
@@ -424,34 +418,62 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
         for cid in channel_ids:
             channel = bot.get_channel(cid)
             if channel and isinstance(channel, discord.TextChannel):
-                sent_message = await channel.send(content=f"{custom_location} {self.store_choice} {mentions}")
+                
+                if self.command_name=='empty':
+                    try:
+                        now = datetime.now(ZoneInfo("America/New_York"))
+                        current_time = now.strftime("%I:%M %p")
+                        async with self.pool.acquire() as conn:
+                            await conn.execute(
+                            "INSERT INTO command_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
+                            interaction.user.id,
+                            now,
+                            "empty"
+                        )
+                        logger.info(f"✅ Logged /empty by {interaction.user} ({interaction.user.id}) at {now}")
+                    except Exception as e:
+                        logger.error(f"❌ Failed to log /empty usage: {e}")
 
-                today_date = datetime.now(ZoneInfo("America/New_York")).date()
-                formatted = f"{today_date.strftime('%A %B')} {today_date.day}"
-                thread_name = f"{formatted}: {custom_location.title()} {self.store_choice.title()} Restock"
+                    # Send confirmation message
+                    await interaction.response.defer(thinking=False, ephemeral=True)
+                    await interaction.followup.send("Success", ephemeral=True)
+                    await interaction.channel.send(
+                    f"📍 **{self.location} {self.store_choice} ** is empty as of **{current_time}**.")
+                else:
+                   # Respond to the user immediately
+                    await interaction.response.send_message(
+                        content=f"Creating thread for {self.location} {self.store_choice}...",
+                        ephemeral=True
+                    )
+                    sent_message = await channel.send(content=f"{self.location} {self.store_choice} {mentions}")
 
-                thread = await channel.create_thread(
-                    name=thread_name,
-                    type=discord.ChannelType.public_thread,
-                    message=sent_message,
-                    slowmode_delay=15
-                )
-                await asyncio.sleep(120)
-                await thread.edit(slowmode_delay=0)
-                break
+                    today_date = datetime.now(ZoneInfo("America/New_York")).date()
+                    formatted = f"{today_date.strftime('%A %B')} {today_date.day}"
+                    thread_name = f"{formatted}: {self.location.title()} {self.store_choice.title()} Restock"
 
-        if thread is None:
-            logger.error("Failed to create thread.")
-            return
+                    thread = await channel.create_thread(
+                        name=thread_name,
+                        type=discord.ChannelType.public_thread,
+                        message=sent_message,
+                        slowmode_delay=15
+                    )
+                    if thread is None:
+                        logger.error("Failed to create thread.")
+                        return
 
-        # Send initial description in thread
-        location_key = f"{loc_key}_{store_key}"
-        if location_key in location_links:
-            desc = f"Restock at {self.store_choice.title()} in **{custom_location.title()}**. [Google maps]({location_links.get(location_key)})"
-        else:
-            desc = f"Restock at {self.store_choice.title()} in **{custom_location.title()}**."
+                    # Send initial description in thread
+                    location_key = f"{loc_key}_{store_key}"
+                    if location_key in location_links:
+                        desc = f"Restock at {self.store_choice.title()} in **{self.location.title()}**. [Google maps]({location_links.get(location_key)})"
+                    else:
+                        desc = f"Restock at {self.store_choice.title()} in **{self.location.title()}**."
 
-        await thread.send(desc)
+                    await thread.send(desc)
+                    await asyncio.sleep(120)
+                    await thread.edit(slowmode_delay=0)
+
+                    break
+
 
         # Log to database
         if self.command_name != "test_restock":
