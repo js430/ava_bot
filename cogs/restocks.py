@@ -456,7 +456,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
 
                     today_date = datetime.now(ZoneInfo("America/New_York")).date()
                     formatted = f"{today_date.strftime('%A %B')} {today_date.day}"
-                    thread_name = f"{formatted}: {self.location.title()} {self.store_choice.title()} Restock"
+                    thread_name = f"{formatted}: {custom_location} {self.store_choice.title()} Restock"
 
                     thread = await channel.create_thread(
                         name=thread_name,
