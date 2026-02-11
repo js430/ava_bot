@@ -482,8 +482,9 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
                         desc = f"Restock at {self.store_choice.title()} in **{custom_location}**."
 
                     await thread.send(desc)
-                    await asyncio.sleep(120)
-                    await thread.edit(slowmode_delay=0)
+                    if self.area!="Online":
+                        await asyncio.sleep(120)
+                        await thread.edit(slowmode_delay=0)
 
                     break
 
