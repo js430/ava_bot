@@ -145,6 +145,10 @@ class StoreChoiceView(discord.ui.View):
     @discord.ui.button(label="Costco", style=discord.ButtonStyle.primary)
     async def costco(self, interaction: discord.Interaction, _):
         await self.handle_store_choice(interaction, "Costco")
+    
+    @discord.ui.button(label="Online", style=discord.ButtonStyle.primary)
+    async def online(self, interaction: discord.Interaction, _):
+        await self.handle_store_choice(interaction, "Online")
 
     @discord.ui.button(label="Other", style=discord.ButtonStyle.secondary)
     async def other(self, interaction: discord.Interaction, _):
@@ -240,6 +244,8 @@ class LocationButton(discord.ui.Button):
             elif self.area=='CVA':
                 channel_ids.append(alert_channels.get("rva"))
                 role_ids.extend([role_pings.get("rva"), role_pings.get(store_key)])
+            elif self.area=='Online':
+                channel_ids.append(1459727324793798907)
             else:
                 channel_ids.append(interaction.channel_id)
             

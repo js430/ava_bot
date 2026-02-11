@@ -1,11 +1,13 @@
 import discord
 from views.store_select_view import StoreSelectView
+
 LOCATIONS =["Fair Lakes", "Springfield", "Reston", "7C","Chantilly", "Mosaic", "South Riding", "Potomac Yard", "Sterling/PR", "Ashburn", "Skyline","Kingstowne", "Gainesville", "Burke", "Manassas", "Leesburg", "Woodbridge", "Tysons"]
 
 class LocationSelectView(discord.ui.View):
     def __init__(self, user: discord.User):
         super().__init__(timeout=300)
         self.user = user
+        
 
         for location in LOCATIONS:
             self.add_item(LocationButton(location, self.user))

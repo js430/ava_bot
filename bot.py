@@ -8,7 +8,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 import re
 
-from views.lookup_view import RestockLookupView
+from views.restock_lookup_view import RestockLookupView
 
 # -----------------------------
 # 🧩 Env
