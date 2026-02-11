@@ -114,6 +114,11 @@ class AreaChoiceView(discord.ui.View):
     @discord.ui.button(label="DC", style=discord.ButtonStyle.primary)
     async def dc(self, interaction: discord.Interaction, _):
         await self.handle_area_choice(interaction, "DC")
+        
+    @discord.ui.button(label="Online", style=discord.ButtonStyle.primary)
+    async def online(self, interaction: discord.Interaction, _):
+        await self.handle_area_choice(interaction, "Online")
+
 
     
 class StoreChoiceView(discord.ui.View):
@@ -145,10 +150,6 @@ class StoreChoiceView(discord.ui.View):
     @discord.ui.button(label="Costco", style=discord.ButtonStyle.primary)
     async def costco(self, interaction: discord.Interaction, _):
         await self.handle_store_choice(interaction, "Costco")
-    
-    @discord.ui.button(label="Online", style=discord.ButtonStyle.primary)
-    async def online(self, interaction: discord.Interaction, _):
-        await self.handle_store_choice(interaction, "Online")
 
     @discord.ui.button(label="Other", style=discord.ButtonStyle.secondary)
     async def other(self, interaction: discord.Interaction, _):
