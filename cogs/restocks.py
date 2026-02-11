@@ -493,7 +493,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
 
 
         # Log to database
-        if self.command_name != "test_restock":
+        if self.command_name =="restock":
             try:
                 eastern_time = datetime.now(ZoneInfo("America/New_York"))
                 async with self.pool.acquire() as conn:
