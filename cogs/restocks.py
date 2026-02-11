@@ -405,6 +405,8 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
             elif self.area=='CVA':
                 channel_ids.append(alert_channels.get("rva"))
                 role_ids.extend([role_pings.get("rva"), role_pings.get(store_key)])
+            elif self.area=='Online':
+                channel_ids.append(1459727324793798907)
             else:
                 channel_ids.append(interaction.channel_id)
             
