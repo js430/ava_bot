@@ -146,6 +146,10 @@ class StoreChoiceView(discord.ui.View):
     @discord.ui.button(label="Walmart", style=discord.ButtonStyle.primary)
     async def walmart(self, interaction: discord.Interaction, _):
         await self.handle_store_choice(interaction, "Walmart")
+    
+    @discord.ui.button(label="Barnes and Nobles", style=discord.ButtonStyle.primary)
+    async def barnes(self, interaction: discord.Interaction, _):
+        await self.handle_store_choice(interaction, "Barnes")
         
     @discord.ui.button(label="Costco", style=discord.ButtonStyle.primary)
     async def costco(self, interaction: discord.Interaction, _):
