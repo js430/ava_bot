@@ -2,26 +2,56 @@ import discord
 from utils.paginator import RestockPaginator
 
 
-STORES = ["Walmart", "Target", "Best Buy"]
-
 class StoreSelectView(discord.ui.View):
-    def __init__(self, user: discord.User, location: str):
+    def __init__(self, user: discord.User, area: str, store_name: str):
         super().__init__(timeout=300)
         self.user = user
-        self.location = location
+        self.area = area
+        self.store_name = store_name
 
-        for store in STORES:
-            self.add_item(StoreButton(store, self.user, self.location))
-            
-class StoreButton(discord.ui.Button):
-    def __init__(self, store: str, user: discord.User, location: str):
+    @classmethod
+    async def create(cls, interaction: discord.Interaction, user, area, store_name):
+        self = cls(user, area, store_name)
+
+        pool = interaction.client.db_pool
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT location
+                FROM locations
+                WHERE state ILIKE $1
+                  AND store_type ILIKE $2
+                ORDER BY location
+                """,
+                area,
+                store_name
+            )
+
+        if not rows:
+            return None
+
+        for row in rows:
+            self.add_item(
+                LocationResultButton(
+                    row["location"],
+                    user,
+                    area,
+                    store_name
+                )
+            )
+
+        return self
+    
+class LocationResultButton(discord.ui.Button):
+    def __init__(self, location: str, user: discord.User, area: str, store_name: str):
         super().__init__(
-            label=store,
-            style=discord.ButtonStyle.primary
+            label=location,
+            style=discord.ButtonStyle.secondary
         )
-        self.store = store
-        self.user = user
         self.location = location
+        self.user = user
+        self.area = area
+        self.store_name = store_name
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user != self.user:
@@ -43,7 +73,7 @@ class StoreButton(discord.ui.Button):
                 ORDER BY date DESC
                 LIMIT 25
                 """,
-                f"%{self.store}%",
+                f"%{self.store_name}%",
                 f"%{self.location}%"
             )
 
