@@ -327,7 +327,7 @@ class LocationButton(discord.ui.Button):
                             ),
                             ephemeral=True
                         )
-                        return 
+                        break 
 
                     except Exception as e:
                         print(f"Database check failed: {e}")
