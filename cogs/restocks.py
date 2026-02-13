@@ -302,7 +302,7 @@ class LocationButton(discord.ui.Button):
                 else:
                     try:
                         eastern_time = datetime.now(ZoneInfo("America/New_York"))
-                        thirty_minutes_ago = eastern_time - timedelta(minutes=60)
+                        thirty_minutes_ago = eastern_time - timedelta(minutes=120)
 
                         async with self.pool.acquire() as conn:
                             record = await conn.fetchrow(
@@ -322,7 +322,7 @@ class LocationButton(discord.ui.Button):
                         if record:
                             await interaction.response.send_message(content=(
                                 f"A restock for **{self.location} {self.store_choice.title()}** "
-                                "was already reported within the last 60 minutes.\n"
+                                "was already reported within the last 120 minutes.\n"
                                 "Please avoid duplicate alerts."
                             ),
                             ephemeral=True
@@ -493,7 +493,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
                 else:
                     try:
                         eastern_time = datetime.now(ZoneInfo("America/New_York"))
-                        thirty_minutes_ago = eastern_time - timedelta(minutes=60)
+                        thirty_minutes_ago = eastern_time - timedelta(minutes=120)
 
                         async with self.pool.acquire() as conn:
                             record = await conn.fetchrow(
@@ -513,7 +513,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
                         if record:
                             await interaction.response.send_message(content=(
                                 f"A restock for **{custom_location} {self.store_choice.title()}** "
-                                "was already reported within the last 60 minutes.\n"
+                                "was already reported within the last 2 hours.\n"
                                 "Please avoid duplicate alerts."
                             ),
                             ephemeral=True
