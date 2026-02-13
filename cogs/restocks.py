@@ -273,7 +273,44 @@ class LocationButton(discord.ui.Button):
         thread = None
         sent_message = None
         bot = self.cog.bot
+        if self.command_name=='restock':
+            try:
+                eastern_time = datetime.now(ZoneInfo("America/New_York"))
+                cutoff_time = eastern_time - timedelta(minutes=120)
 
+                async with self.pool.acquire() as conn:
+                    record = await conn.fetchrow(
+                        """
+                        SELECT 1
+                        FROM restock_reports
+                        WHERE store_name = $1
+                        AND location = $2
+                        AND date >= $3
+                        LIMIT 1
+                        """,
+                        self.store_choice,
+                        self.location,  # or self.location in the button class
+                        cutoff_time
+                    )
+
+                if record:
+                    await interaction.response.send_message(
+                        content=(
+                            f"A restock for **{self.location} {self.store_choice.title()}** "
+                            "was already reported within the last 2 hours.\n"
+                            "Please avoid duplicate alerts."
+                        ),
+                        ephemeral=True
+                    )
+                    return  # 🚨 hard stop
+
+            except Exception as e:
+                logger.error(f"Database check failed: {e}")
+                await interaction.response.send_message(
+                    "Something went wrong while checking recent reports.",
+                    ephemeral=True
+                )
+                return
         # Send alert and create thread
         for cid in channel_ids:
             channel = bot.get_channel(cid)
@@ -300,37 +337,6 @@ class LocationButton(discord.ui.Button):
                     await interaction.channel.send(
                     f"📍 **{self.location} {self.store_choice} ** is empty as of **{current_time}**.")
                 else:
-                    try:
-                        eastern_time = datetime.now(ZoneInfo("America/New_York"))
-                        thirty_minutes_ago = eastern_time - timedelta(minutes=120)
-
-                        async with self.pool.acquire() as conn:
-                            record = await conn.fetchrow(
-                                """
-                                SELECT 1
-                                FROM restock_reports
-                                WHERE store_name = $1
-                                AND location = $2
-                                AND date >= $3
-                                LIMIT 1
-                                """,
-                                self.store_choice,
-                                self.location,
-                                thirty_minutes_ago
-                            )
-
-                        if record:
-                            await interaction.response.send_message(content=(
-                                f"A restock for **{self.location} {self.store_choice.title()}** "
-                                "was already reported within the last 120 minutes.\n"
-                                "Please avoid duplicate alerts."
-                            ),
-                            ephemeral=True
-                        )
-                        break 
-
-                    except Exception as e:
-                        print(f"Database check failed: {e}")
                     # Respond to the user immediately
                     await interaction.response.send_message(
                         content=f"Creating thread for {self.location} {self.store_choice}...",
@@ -464,7 +470,44 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
         thread = None
         sent_message = None
         bot = self.cog.bot
+        if self.command_name=='restock':
+            try:
+                eastern_time = datetime.now(ZoneInfo("America/New_York"))
+                cutoff_time = eastern_time - timedelta(minutes=120)
 
+                async with self.pool.acquire() as conn:
+                    record = await conn.fetchrow(
+                        """
+                        SELECT 1
+                        FROM restock_reports
+                        WHERE store_name = $1
+                        AND location = $2
+                        AND date >= $3
+                        LIMIT 1
+                        """,
+                        self.store_choice,
+                        custom_location,  # or self.location in the button class
+                        cutoff_time
+                    )
+
+                if record:
+                    await interaction.response.send_message(
+                        content=(
+                            f"A restock for **{custom_location} {self.store_choice.title()}** "
+                            "was already reported within the last 2 hours.\n"
+                            "Please avoid duplicate alerts."
+                        ),
+                        ephemeral=True
+                    )
+                    return  # 🚨 hard stop
+
+            except Exception as e:
+                logger.error(f"Database check failed: {e}")
+                await interaction.response.send_message(
+                    "Something went wrong while checking recent reports.",
+                    ephemeral=True
+                )
+                return
         # Send alert and create thread
         for cid in channel_ids:
             channel = bot.get_channel(cid)
@@ -491,37 +534,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
                     await interaction.channel.send(
                     f"📍 **{custom_location} {self.store_choice} ** is empty as of **{current_time}**.")
                 else:
-                    try:
-                        eastern_time = datetime.now(ZoneInfo("America/New_York"))
-                        thirty_minutes_ago = eastern_time - timedelta(minutes=120)
-
-                        async with self.pool.acquire() as conn:
-                            record = await conn.fetchrow(
-                                """
-                                SELECT 1
-                                FROM restock_reports
-                                WHERE store_name = $1
-                                AND location = $2
-                                AND date >= $3
-                                LIMIT 1
-                                """,
-                                self.store_choice,
-                                custom_location,
-                                thirty_minutes_ago
-                            )
-
-                        if record:
-                            await interaction.response.send_message(content=(
-                                f"A restock for **{custom_location} {self.store_choice.title()}** "
-                                "was already reported within the last 2 hours.\n"
-                                "Please avoid duplicate alerts."
-                            ),
-                            ephemeral=True
-                        )
-                        return 
-
-                    except Exception as e:
-                        print(f"Database check failed: {e}")
+                    
                    # Respond to the user immediately
                     await interaction.response.send_message(
                         content=f"Creating thread for {custom_location} {self.store_choice}...",
