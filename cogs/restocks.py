@@ -311,11 +311,11 @@ class LocationButton(discord.ui.Button):
                     ephemeral=True
                 )
                 return
+        print(channel_ids)
         # Send alert and create thread
         for cid in channel_ids:
             channel = bot.get_channel(cid)
             if channel and isinstance(channel, discord.TextChannel):
-                
                 if self.command_name=='empty':
                     try:
                         now = datetime.now(ZoneInfo("America/New_York"))
@@ -330,7 +330,6 @@ class LocationButton(discord.ui.Button):
                         logger.info(f"✅ Logged /empty by {interaction.user} ({interaction.user.id}) at {now}")
                     except Exception as e:
                         logger.error(f"❌ Failed to log /empty usage: {e}")
-
                     # Send confirmation message
                     await interaction.response.defer(thinking=False, ephemeral=True)
                     await interaction.followup.send("Success", ephemeral=True)
