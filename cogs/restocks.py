@@ -20,9 +20,6 @@ if not TEST:
     role_pings={"nova":1406765992658341908, "notsonova":1406766138163200091, "maryland":1406766061012910191, "target":1406754673100193883, "bestbuy":1406760883023118569, "walmart":1406754750778572831, "dc": 1406765925281304659, "rva":1466608853394395136 }
     nova=['reston', 'fairlakes', 'fl', 'skyline', '7c', '7corners', 'skyline', 'mosaic', 'chantilly', 'dulles', 'ashburn', 'burke', 'springfield', 'gainesville', 'manassas', 'hyblavalley', 'hybla', 'potomacyard', 'py'
         'leesburg', 'southriding', 'pc', 'fallschurch', 'tysons', 'arlington', 'alexandria', 'sterling/pr', 'springfield', 'southriding', 'kingstowne']
-    notsonova=['woodbridge','dumfries', 'winchester', 'leesburg']
-    maryland=['frederick', 'gaithersburg', 'rockville', 'bethesda']
-    dc=['connecticutave', 'connave', '14st', '14thst', 'nyave', 'newyorkave', 'wisconsinave', 'wisconsinavenue', 'georgiaave']
 
 location_links={"reston_target":"https://maps.app.goo.gl/AzGn3V5ES1sUyP2M7",
                 "fairlakes_target":"https://maps.app.goo.gl/d7wKWfPvb26FgZxy7",
@@ -234,7 +231,7 @@ class LocationButton(discord.ui.Button):
 
         loc_key = self.location.lower().replace(" ", "")
         store_key = self.store_choice.lower().replace(" ", "")
-
+        print(self.area, self.location)
         # Determine channels and roles based on location
         if not TEST:
             if self.area=='VA':
