@@ -16,7 +16,7 @@ TEST=False
 alert_channels={"test":1425953503536484513}
 #alert_channels={"nova": 1425953503536484513, "notsonova":1425953503536484513, "maryland": 1425953503536484513 }
 if not TEST:
-    alert_channels={"nova": 1407118323749224531, "notsonova":1407118323749224531, "md": 1407118364215611574, "general": 1406755535599964261, "dc": 1407118410898210928, "rva":1469486121539993835}
+    alert_channels={"nova": 1407118323749224531, "notsonova":1407118323749224531, "md": 1407118364215611574, "general": 1406755535599964261, "dc": 1407118410898210928, "rva": 1469486121539993835}
     role_pings={"nova":1406765992658341908, "notsonova":1406766138163200091, "maryland":1406766061012910191, "target":1406754673100193883, "bestbuy":1406760883023118569, "walmart":1406754750778572831, "dc": 1406765925281304659, "rva":1466608853394395136 }
     nova=['reston', 'fairlakes', 'fl', 'skyline', '7c', '7corners', 'skyline', 'mosaic', 'chantilly', 'dulles', 'ashburn', 'burke', 'springfield', 'gainesville', 'manassas', 'hyblavalley', 'hybla', 'potomacyard', 'py'
         'leesburg', 'southriding', 'pc', 'fallschurch', 'tysons', 'arlington', 'alexandria', 'sterling/pr', 'springfield', 'southriding', 'kingstowne']
@@ -231,7 +231,6 @@ class LocationButton(discord.ui.Button):
 
         loc_key = self.location.lower().replace(" ", "")
         store_key = self.store_choice.lower().replace(" ", "")
-        print(self.area, self.location)
         # Determine channels and roles based on location
         if not TEST:
             if self.area=='VA':
@@ -256,8 +255,6 @@ class LocationButton(discord.ui.Button):
         channel_ids = [cid for cid in channel_ids if cid is not None]
         role_ids = [rid for rid in role_ids if rid is not None]
 
-        if not channel_ids:
-            channel_ids.append(interaction.channel_id)
         if TEST:
             channel_ids = [alert_channels.get("test")]
 
@@ -308,7 +305,6 @@ class LocationButton(discord.ui.Button):
                     ephemeral=True
                 )
                 return
-        print(channel_ids)
         # Send alert and create thread
         for cid in channel_ids:
             channel = bot.get_channel(cid)
@@ -330,7 +326,7 @@ class LocationButton(discord.ui.Button):
                     # Send confirmation message
                     await interaction.response.defer(thinking=False, ephemeral=True)
                     await interaction.followup.send("Success", ephemeral=True)
-                    await interaction.channel.send(
+                    await channel.send(
                     f"📍 **{self.location} {self.store_choice} ** is empty as of **{current_time}**.")
                 else:
                     # Respond to the user immediately
@@ -527,7 +523,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
                     # Send confirmation message
                     await interaction.response.defer(thinking=False, ephemeral=True)
                     await interaction.followup.send("Success", ephemeral=True)
-                    await interaction.channel.send(
+                    await channel.send(
                     f"📍 **{custom_location} {self.store_choice} ** is empty as of **{current_time}**.")
                 else:
                     
