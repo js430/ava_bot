@@ -186,29 +186,31 @@ class LocationChoiceView(discord.ui.View):
     @classmethod
     async def create(cls, interaction, area, store_choice, command_name, cog):
         self = cls(interaction, area, store_choice, command_name, cog)
-        
-        raw_locations = await self.cog.run_custom_sql (
-            """
-            SELECT location
-            FROM locations
-            WHERE store_type = $1
-            AND state = $2
-            ORDER BY location ASC
-            """,
-            store_choice,
-            area
-        )
-
-        locations = [r["location"] for r in raw_locations]
-
-        for location in locations:
-            self.add_item(
-                LocationButton(location, area, store_choice, command_name, cog)
+        if area != "Online":
+            raw_locations = await self.cog.run_custom_sql (
+                """
+                SELECT location
+                FROM locations
+                WHERE store_type = $1
+                AND state = $2
+                ORDER BY location ASC
+                """,
+                store_choice,
+                area
             )
 
-        self.add_item(
-            LocationOtherButton(area, store_choice, command_name, cog)
-        )
+            locations = [r["location"] for r in raw_locations]
+
+            for location in locations:
+                self.add_item(
+                    LocationButton(location, area, store_choice, command_name, cog)
+                )
+
+            self.add_item(
+                LocationOtherButton(area, store_choice, command_name, cog)
+            )
+        else:
+            self.add_item(LocationButton("Online", area, store_choice, command_name, cog))
 
         return self
 
