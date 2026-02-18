@@ -700,7 +700,7 @@ class Restocks(commands.Cog):
                     SELECT store_name, location, date, channel_name
                     FROM restock_reports
                     WHERE (date AT TIME ZONE 'America/New_York')::date = $1
-                    AND (channel_name IS NULL OR channel_name != 'online-restock-information')
+                    AND (channel_name IS NULL OR channel_name != 'other-online-restocks')
                     ORDER BY date ASC 
                 """,
                     today
