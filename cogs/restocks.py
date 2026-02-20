@@ -151,7 +151,11 @@ class StoreChoiceView(discord.ui.View):
     @discord.ui.button(label="Costco", style=discord.ButtonStyle.primary)
     async def costco(self, interaction: discord.Interaction, _):
         await self.handle_store_choice(interaction, "Costco")
-
+        
+    @discord.ui.button(label="5 Below", style=discord.ButtonStyle.primary)
+    async def five_below(self, interaction: discord.Interaction, _):
+        await self.handle_store_choice(interaction, "5 Below")
+        
     @discord.ui.button(label="Other", style=discord.ButtonStyle.secondary)
     async def other(self, interaction: discord.Interaction, _):
         await interaction.response.send_modal(StoreNameModal(self.interaction, self.area, self.command_name, self.cog))
