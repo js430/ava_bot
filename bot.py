@@ -89,7 +89,7 @@ async def auto_cleanup():
                 if message.created_at < cutoff:
                     try:
                         await message.delete()
-                        await asyncio.sleep(10)  # rate-limit safety
+                        await asyncio.sleep(50)  # rate-limit safety
                     except discord.NotFound:
                         continue
                     except discord.Forbidden:
@@ -102,6 +102,8 @@ async def auto_cleanup():
     
     for channel_id in LINK_ONLY_CHANNELS:
         channel = bot.get_channel(channel_id)
+        cutoff = now - timedelta(seconds=300)
+
 
         if not isinstance(channel, discord.TextChannel):
             continue
@@ -119,7 +121,7 @@ async def auto_cleanup():
                 if (message.created_at < cutoff and not message_has_link(message)):
                     try:
                         await message.delete()
-                        await asyncio.sleep(10)  # 1-second delay to avoid rate limits
+                        await asyncio.sleep(50)  # 1-second delay to avoid rate limits
                     except discord.NotFound:
                         continue
                     except discord.Forbidden:
