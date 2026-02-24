@@ -81,6 +81,11 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 SUMMARY_CHANNEL_ID = 1431090547606687804  # 👈 Replace with your channel ID
 SUMMARY_HOUR = 22  # 24-hour format (22 = 10 PM Eastern)
 NY_TZ = pytz.timezone("America/New_York")
+ # Define reactions that rename thread
+THREAD_RENAME_EMOJIS = {
+    "✅": "(Still in stock)",
+    "❎": "(Cooked)"
+    }
 
 
 class AreaChoiceView(discord.ui.View):
@@ -352,6 +357,14 @@ class LocationButton(discord.ui.Button):
                         message=sent_message,
                         slowmode_delay=15
                     )
+                    self.cog.restock_thread_map[sent_message.id] = {
+                    "thread_id": thread.id,
+                    "base_name": thread_name
+                    }
+
+                    for emoji in THREAD_RENAME_EMOJIS:
+                        await sent_message.add_reaction(emoji)
+                        
                     if thread is None:
                         logger.error("Failed to create thread.")
                         return
@@ -672,7 +685,10 @@ class Restocks(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.daily_summary_task.start() 
-        
+        self.restock_thread_map={}
+
+    
+    
     @property
     def pool(self) -> asyncpg.Pool | None:
         return getattr(self.bot, "db_pool", None)
@@ -804,7 +820,41 @@ class Restocks(commands.Cog):
                 resolved[uid] = f"Unknown User ({uid})"
 
         return resolved
-            
+    
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+
+        if payload.user_id == self.bot.user.id:
+            return
+
+        if payload.message_id not in self.restock_thread_map:
+            return
+
+        guild = self.bot.get_guild(payload.guild_id)
+        if not guild:
+            return
+
+        data = self.restock_thread_map[payload.message_id]
+        thread = guild.get_thread(data["thread_id"])
+
+        if not thread:
+            return
+
+        emoji = str(payload.emoji)
+
+        if emoji not in THREAD_RENAME_EMOJIS:
+            return
+
+        base_name = data["base_name"]
+
+        # Remove any existing status emoji from end
+        for e in THREAD_RENAME_EMOJIS:
+            if thread.name.endswith(f" {e}"):
+                base_name = thread.name[:-2].strip()
+
+        new_name = f"{base_name} {emoji}"
+
+        await thread.edit(name=new_name)    
     # ---------------- COMMANDS ----------------
     @app_commands.command(name="restock", description="Choose a store and location to create a thread.")
     @app_commands.guilds(discord.Object(id=1406738815854317658))
