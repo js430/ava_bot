@@ -852,7 +852,7 @@ class Restocks(commands.Cog):
             if thread.name.endswith(f" {e}"):
                 base_name = thread.name[:-2].strip()
 
-        new_name = f"{base_name} {emoji}"
+        new_name = f"{base_name} {THREAD_RENAME_EMOJIS[emoji]}"
 
         await thread.edit(name=new_name)    
     # ---------------- COMMANDS ----------------
