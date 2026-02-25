@@ -631,7 +631,7 @@ class Restocks(commands.Cog):
                     )
 
                 if record:
-                    await interaction.response.send_message(
+                    await interaction.followup.send_message(
                         content=(
                             f"A restock for **{location} {store_choice.title()}** "
                             "was already reported within the last 2 hours.\n"
@@ -643,7 +643,7 @@ class Restocks(commands.Cog):
 
             except Exception as e:
                 logger.error(f"Database check failed: {e}")
-                await interaction.response.send_message(
+                await interaction.followup.send_message(
                     "Something went wrong while checking recent reports.",
                     ephemeral=True
                 )
