@@ -295,7 +295,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
             self.area,
             self.store_choice,
             self.command_name,
-            interaction.user.id
+            interaction.user.id 
         )
         
         await interaction.response.send_message(
