@@ -246,11 +246,18 @@ class LocationButton(discord.ui.Button):
         interaction.user.id
     )
 
-        await interaction.response.send_message(
-            content=f"Create restock thread for **{self.location} {self.store_choice}**? False alarms will result in appropriate punishment, including but not limited to: loss of bot use privilege, server timeout, server ban.",
-            view=view,
-            ephemeral=True
-        )
+        if self.command_name=='empty':
+            await interaction.response.send_message(
+                content=f"Send empty message for **{self.location} {self.store_choice}**?",
+                view=view,
+                ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                content=f"**Create restock thread** for **{self.location} {self.store_choice}**? False alarms will result in appropriate punishment, including but not limited to: loss of bot use privilege, server timeout, server ban.",
+                view=view,
+                ephemeral=True
+            )
             
 
 
@@ -298,11 +305,18 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
             interaction.user.id 
         )
         
-        await interaction.response.send_message(
-            content=f"Create restock thread for **{location_value} {self.store_choice}**? False alarms will result in appropriate punishment, including but not limited to: loss of bot use privilege, server timeout, server ban.",
-            view=view,
-            ephemeral=True
-        )
+        if self.command_name=='empty':
+            await interaction.response.send_message(
+                content=f"Send empty message for **{location_value} {self.store_choice}**?",
+                view=view,
+                ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                content=f"**Create restock thread** for **{location_value} {self.store_choice}**? False alarms will result in appropriate punishment, including but not limited to: loss of bot use privilege, server timeout, server ban.",
+                view=view,
+                ephemeral=True
+            )
 
 class QueryModal(discord.ui.Modal, title="Query Information"):
     def __init__(self, cog: "Restocks"):
