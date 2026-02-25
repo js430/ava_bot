@@ -9,7 +9,7 @@ import logging
 import asyncpg
 import os
 import pytz
-from views import confirm_restock_view as ConfirmRestockView
+from views.confirm_restock_view import ConfirmRestockView
 
 logger = logging.getLogger("restocks")
 #VARIABLES
