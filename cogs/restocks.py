@@ -9,6 +9,7 @@ import logging
 import asyncpg
 import os
 import pytz
+from views import confirm_restock_view as ConfirmRestockView
 
 logger = logging.getLogger("restocks")
 #VARIABLES
@@ -236,180 +237,23 @@ class LocationButton(discord.ui.Button):
         return self.cog.pool
 
     async def callback(self, interaction: discord.Interaction):
-        # Determine channels and roles
-        channel_ids = []
-        role_ids = []
+        view = ConfirmRestockView(
+        self.cog,
+        self.location,
+        self.area,
+        self.store_choice,
+        self.command_name,
+        interaction.user.id
+    )
 
-        loc_key = self.location.lower().replace(" ", "")
-        store_key = self.store_choice.lower().replace(" ", "")
-        # Determine channels and roles based on location
-        if not TEST:
-            if self.area=='VA':
-                channel_ids.append(alert_channels.get("nova"))
-                role_ids.extend([role_pings.get("nova"), role_pings.get(store_key),role_pings.get("notsonova")])
-            elif self.area=='MD':
-                channel_ids.append(alert_channels.get("md"))
-                role_ids.extend([role_pings.get("maryland"), role_pings.get(store_key)])
-            elif self.area=='DC':
-                channel_ids.append(alert_channels.get("dc"))
-                role_ids.extend([role_pings.get("dc"), role_pings.get(store_key)])
-            elif self.area=='CVA':
-                channel_ids.append(alert_channels.get("rva"))
-                role_ids.extend([role_pings.get("rva"), role_pings.get(store_key)])
-            elif self.area=='Online':
-                channel_ids.append(1459727324793798907)
-            else:
-                channel_ids.append(interaction.channel_id)
+        await interaction.response.send_message(
+            content=f"Create restock thread for **{self.location} {self.store_choice}**?",
+            view=view,
+            ephemeral=True
+        )
             
 
-        # Fallbacks
-        channel_ids = [cid for cid in channel_ids if cid is not None]
-        role_ids = [rid for rid in role_ids if rid is not None]
 
-        if TEST:
-            channel_ids = [alert_channels.get("test")]
-
-        mentions = ""
-        if self.command_name != "test_restock":
-            mentions = " ".join(f"<@&{rid}>" for rid in role_ids) + ". "
-        else:
-            mentions = f"TEST: IGNORE Alerted"
-
-        thread = None
-        sent_message = None
-        bot = self.cog.bot
-        if self.command_name=='restock':
-            try:
-                eastern_time = datetime.now(ZoneInfo("America/New_York"))
-                cutoff_time = eastern_time - timedelta(minutes=120)
-
-                async with self.pool.acquire() as conn:
-                    record = await conn.fetchrow(
-                        """
-                        SELECT 1
-                        FROM restock_reports
-                        WHERE store_name = $1
-                        AND location = $2
-                        AND date >= $3
-                        LIMIT 1
-                        """,
-                        self.store_choice,
-                        self.location,  # or self.location in the button class
-                        cutoff_time
-                    )
-
-                if record:
-                    await interaction.response.send_message(
-                        content=(
-                            f"A restock for **{self.location} {self.store_choice.title()}** "
-                            "was already reported within the last 2 hours.\n"
-                            "Please avoid duplicate alerts."
-                        ),
-                        ephemeral=True
-                    )
-                    return  # 🚨 hard stop
-
-            except Exception as e:
-                logger.error(f"Database check failed: {e}")
-                await interaction.response.send_message(
-                    "Something went wrong while checking recent reports.",
-                    ephemeral=True
-                )
-                return
-        # Send alert and create thread
-        for cid in channel_ids:
-            channel = bot.get_channel(cid)
-            if channel and isinstance(channel, discord.TextChannel):
-                if self.command_name=='empty':
-                    try:
-                        now = datetime.now(ZoneInfo("America/New_York"))
-                        current_time = now.strftime("%I:%M %p")
-                        async with self.pool.acquire() as conn:
-                            await conn.execute(
-                            "INSERT INTO command_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
-                            interaction.user.id,
-                            now,
-                            "empty"
-                        )
-                        logger.info(f"✅ Logged /empty by {interaction.user} ({interaction.user.id}) at {now}")
-                    except Exception as e:
-                        logger.error(f"❌ Failed to log /empty usage: {e}")
-                    # Send confirmation message
-                    await interaction.response.defer(thinking=False, ephemeral=True)
-                    await interaction.followup.send("Success", ephemeral=True)
-                    await channel.send(
-                    f"📍 **{self.location} {self.store_choice} ** is empty as of **{current_time}**.")
-                else:
-                    # Respond to the user immediately
-                    await interaction.response.send_message(
-                        content=f"Creating thread for {self.location} {self.store_choice}...",
-                        ephemeral=True
-                    )
-                    sent_message = await channel.send(content=f"{self.location} {self.store_choice} {mentions}")
-
-                    today_date = datetime.now(ZoneInfo("America/New_York")).date()
-                    formatted = f"{today_date.strftime('%A %B')} {today_date.day}"
-                    thread_name = f"{formatted}: {self.location.title()} {self.store_choice.title()} Restock"
-
-                    thread = await channel.create_thread(
-                        name=thread_name,
-                        type=discord.ChannelType.public_thread,
-                        message=sent_message,
-                        slowmode_delay=15
-                    )
-                    self.cog.restock_thread_map[sent_message.id] = {
-                    "thread_id": thread.id,
-                    "base_name": thread_name
-                    }
-
-                    for emoji in THREAD_RENAME_EMOJIS:
-                        await sent_message.add_reaction(emoji)
-                        
-                    if thread is None:
-                        logger.error("Failed to create thread.")
-                        return
-
-                    # Send initial description in thread
-                    location_key = f"{loc_key}_{store_key}"
-                    if location_key in location_links:
-                        desc = f"Restock at {self.store_choice.title()} in **{self.location.title()}**. [Google maps]({location_links.get(location_key)})"
-                    else:
-                        desc = f"Restock at {self.store_choice.title()} in **{self.location.title()}**."
-
-                    await thread.send(desc)
-                    await asyncio.sleep(120)
-                    await thread.edit(slowmode_delay=0)
-
-                    break
-
-        
-
-        # Log to database
-        if self.command_name == "restock":
-            try:
-                eastern_time = datetime.now(ZoneInfo("America/New_York"))
-                async with self.pool.acquire() as conn:
-                    await conn.execute(
-                        "INSERT INTO restock_reports (user_id, store_name, location, date, channel_name) VALUES ($1, $2, $3, $4, $5)",
-                        interaction.user.id,
-                        self.store_choice,
-                        self.location,
-                        eastern_time,
-                        channel.name
-                    )
-                    logger.info(f"✅ Logged restock report: {self.location} {self.store_choice} by {interaction.user} at {eastern_time}")
-                
-            except Exception as e:
-                logger.error(f"❌ Failed to log restock report: {e}")
-
-        # Send category selection view if test mode
-        # if self.command_name == "test_restock":
-        #     view = CategorySelectView(interaction.user, thread)
-        #     await thread.send(
-        #         f"{interaction.user.mention}, choose restock categories below",
-        #         view=view
-        #     )
-        #     asyncio.create_task(cleanup_thread(interaction, thread, sent_message))
 
 class LocationOtherButton(discord.ui.Button):
     def __init__(self, area:str, store_choice: str, command_name: str, cog: "Restocks"):
@@ -423,181 +267,42 @@ class LocationOtherButton(discord.ui.Button):
         await interaction.response.send_modal(LocationNameModal(self.area, self.store_choice, self.command_name, self.cog))
 
 class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
-    location_name = discord.ui.TextInput(label="Location", placeholder="Enter custom location")
+    location_name = discord.ui.TextInput(
+        label="Location", 
+        placeholder="Enter custom location"
+    )
 
-    def __init__(self, area:str, store_choice: str, command_name: str, cog: "Restocks"):
+    def __init__(self, area: str, store_choice: str, command_name: str, cog: "Restocks"):
         super().__init__()
         self.store_choice = store_choice
-        self.cog= cog
-        self.command_name=command_name
-        self.area=area
+        self.cog = cog
+        self.command_name = command_name
+        self.area = area
+        # Don't set self.location yet; we'll get the value on submit
+
     @property
     def pool(self) -> asyncpg.Pool:
         return self.cog.pool
 
     async def on_submit(self, interaction: discord.Interaction):
-        custom_location=self.location_name.value.strip()
-        channel_ids = []
-        role_ids = []
+        # Get the actual text the user entered
+        location_value = self.location_name.value.strip()
 
-        loc_key = custom_location.replace(" ", "")
-        store_key = self.store_choice.lower().replace(" ", "")
+        # Create confirmation view
+        view = ConfirmRestockView(
+            self.cog,
+            location_value,      # pass the actual string
+            self.area,
+            self.store_choice,
+            self.command_name,
+            interaction.user.id
+        )
 
-        # Determine channels and roles based on location
-        if not TEST:
-            if self.area=='VA':
-                channel_ids.append(alert_channels.get("nova"))
-                role_ids.extend([role_pings.get("nova"), role_pings.get(store_key),role_pings.get("notsonova")])
-            elif self.area=='MD':
-                channel_ids.append(alert_channels.get("md"))
-                role_ids.extend([role_pings.get("maryland"), role_pings.get(store_key)])
-            elif self.area=='DC':
-                channel_ids.append(alert_channels.get("dc"))
-                role_ids.extend([role_pings.get("dc"), role_pings.get(store_key)])
-            elif self.area=='CVA':
-                channel_ids.append(alert_channels.get("rva"))
-                role_ids.extend([role_pings.get("rva"), role_pings.get(store_key)])
-            elif self.area=='Online':
-                channel_ids.append(1459727324793798907)
-            else:
-                channel_ids.append(interaction.channel_id)
-            
-
-        # Fallbacks
-        channel_ids = [cid for cid in channel_ids if cid is not None]
-        role_ids = [rid for rid in role_ids if rid is not None]
-
-        if not channel_ids:
-            channel_ids.append(interaction.channel_id)
-        if TEST:
-            channel_ids = [alert_channels.get("test")]
-
-        mentions = ""
-        if self.command_name != "test_restock":
-            mentions = " ".join(f"<@&{rid}>" for rid in role_ids) + ". "
-        else:
-            mentions = f"TEST: IGNORE Alerted by: {interaction.user.display_name}, {interaction.user.id}"
-
-        thread = None
-        sent_message = None
-        bot = self.cog.bot
-        if self.command_name=='restock':
-            try:
-                eastern_time = datetime.now(ZoneInfo("America/New_York"))
-                cutoff_time = eastern_time - timedelta(minutes=120)
-
-                async with self.pool.acquire() as conn:
-                    record = await conn.fetchrow(
-                        """
-                        SELECT 1
-                        FROM restock_reports
-                        WHERE store_name = $1
-                        AND location = $2
-                        AND date >= $3
-                        LIMIT 1
-                        """,
-                        self.store_choice,
-                        custom_location,  # or self.location in the button class
-                        cutoff_time
-                    )
-
-                if record:
-                    await interaction.response.send_message(
-                        content=(
-                            f"A restock for **{custom_location} {self.store_choice.title()}** "
-                            "was already reported within the last 2 hours.\n"
-                            "Please avoid duplicate alerts."
-                        ),
-                        ephemeral=True
-                    )
-                    return  # 🚨 hard stop
-
-            except Exception as e:
-                logger.error(f"Database check failed: {e}")
-                await interaction.response.send_message(
-                    "Something went wrong while checking recent reports.",
-                    ephemeral=True
-                )
-                return
-        # Send alert and create thread
-        for cid in channel_ids:
-            channel = bot.get_channel(cid)
-            if channel and isinstance(channel, discord.TextChannel):
-                
-                if self.command_name=='empty':
-                    try:
-                        now = datetime.now(ZoneInfo("America/New_York"))
-                        current_time = now.strftime("%I:%M %p")
-                        async with self.pool.acquire() as conn:
-                            await conn.execute(
-                            "INSERT INTO command_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
-                            interaction.user.id,
-                            now,
-                            "empty"
-                        )
-                        logger.info(f"✅ Logged /empty by {interaction.user} ({interaction.user.id}) at {now}")
-                    except Exception as e:
-                        logger.error(f"❌ Failed to log /empty usage: {e}")
-
-                    # Send confirmation message
-                    await interaction.response.defer(thinking=False, ephemeral=True)
-                    await interaction.followup.send("Success", ephemeral=True)
-                    await channel.send(
-                    f"📍 **{custom_location} {self.store_choice} ** is empty as of **{current_time}**.")
-                else:
-                    
-                   # Respond to the user immediately
-                    await interaction.response.send_message(
-                        content=f"Creating thread for {custom_location} {self.store_choice}...",
-                        ephemeral=True
-                    )
-                    sent_message = await channel.send(content=f"{custom_location} {self.store_choice} {mentions}")
-
-                    today_date = datetime.now(ZoneInfo("America/New_York")).date()
-                    formatted = f"{today_date.strftime('%A %B')} {today_date.day}"
-                    thread_name = f"{formatted}: {custom_location} {self.store_choice.title()} Restock"
-
-                    thread = await channel.create_thread(
-                        name=thread_name,
-                        type=discord.ChannelType.public_thread,
-                        message=sent_message,
-                        slowmode_delay=15
-                    )
-                    if thread is None:
-                        logger.error("Failed to create thread.")
-                        return
-
-                    # Send initial description in thread
-                    location_key = f"{loc_key}_{store_key}"
-                    if location_key in location_links:
-                        desc = f"Restock at {self.store_choice.title()} in **{custom_location}**. [Google maps]({location_links.get(location_key)})"
-                    else:
-                        desc = f"Restock at {self.store_choice.title()} in **{custom_location}**."
-
-                    await thread.send(desc)
-                    if self.area!="Online":
-                        await asyncio.sleep(120)
-                        await thread.edit(slowmode_delay=0)
-
-                    break
-
-
-        # Log to database
-        if self.command_name =="restock":
-            try:
-                eastern_time = datetime.now(ZoneInfo("America/New_York"))
-                async with self.pool.acquire() as conn:
-                    await conn.execute(
-                        "INSERT INTO restock_reports (user_id, store_name, location, date, channel_name) VALUES ($1, $2, $3, $4, $5)",
-                        interaction.user.id,
-                        self.store_choice,
-                        custom_location,
-                        eastern_time,
-                        channel.name
-                    )
-                    logger.info(f"✅ Logged restock report: {custom_location} {self.store_choice} by {interaction.user} at {eastern_time}")
-            except Exception as e:
-                logger.error(f"❌ Failed to log restock report: {e}")
+        await interaction.response.send_message(
+            content=f"Create restock thread for **{location_value} {self.store_choice}**?",
+            view=view,
+            ephemeral=True
+        )
 
 class QueryModal(discord.ui.Modal, title="Query Information"):
     def __init__(self, cog: "Restocks"):
@@ -824,6 +529,7 @@ class Restocks(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
 
+
         if payload.user_id == self.bot.user.id:
             return
 
@@ -855,6 +561,183 @@ class Restocks(commands.Cog):
         new_name = f"{base_name} {THREAD_RENAME_EMOJIS[emoji]}"
 
         await thread.edit(name=new_name)    
+    async def create_restock_thread(
+        self, 
+        interaction:discord.Interaction,
+        location: str,
+        area: str,
+        store_choice: str,
+        command_name: str
+    ):
+        channel_ids = []
+        role_ids = []
+
+        loc_key = location.lower().replace(" ", "")
+        store_key = store_choice.lower().replace(" ", "")
+        # Determine channels and roles based on location
+        if not TEST:
+            if area=='VA':
+                channel_ids.append(alert_channels.get("nova"))
+                role_ids.extend([role_pings.get("nova"), role_pings.get(store_key),role_pings.get("notsonova")])
+            elif area=='MD':
+                channel_ids.append(alert_channels.get("md"))
+                role_ids.extend([role_pings.get("maryland"), role_pings.get(store_key)])
+            elif area=='DC':
+                channel_ids.append(alert_channels.get("dc"))
+                role_ids.extend([role_pings.get("dc"), role_pings.get(store_key)])
+            elif area=='CVA':
+                channel_ids.append(alert_channels.get("rva"))
+                role_ids.extend([role_pings.get("rva"), role_pings.get(store_key)])
+            elif area=='Online':
+                channel_ids.append(1459727324793798907)
+            else:
+                channel_ids.append(interaction.channel_id)
+            
+
+        # Fallbacks
+        channel_ids = [cid for cid in channel_ids if cid is not None]
+        role_ids = [rid for rid in role_ids if rid is not None]
+
+        if TEST:
+            channel_ids = [alert_channels.get("test")]
+
+        mentions = ""
+        if command_name != "test_restock":
+            mentions = " ".join(f"<@&{rid}>" for rid in role_ids) + ". "
+        else:
+            mentions = f"TEST: IGNORE Alerted"
+
+        thread = None
+        sent_message = None
+        bot = self.bot
+        if command_name=='restock':
+            try:
+                eastern_time = datetime.now(ZoneInfo("America/New_York"))
+                cutoff_time = eastern_time - timedelta(minutes=120)
+
+                async with self.pool.acquire() as conn:
+                    record = await conn.fetchrow(
+                        """
+                        SELECT 1
+                        FROM restock_reports
+                        WHERE store_name = $1
+                        AND location = $2
+                        AND date >= $3
+                        LIMIT 1
+                        """,
+                        store_choice,
+                        location,  # or self.location in the button class
+                        cutoff_time
+                    )
+
+                if record:
+                    await interaction.response.send_message(
+                        content=(
+                            f"A restock for **{location} {store_choice.title()}** "
+                            "was already reported within the last 2 hours.\n"
+                            "Please avoid duplicate alerts."
+                        ),
+                        ephemeral=True
+                    )
+                    return  # 🚨 hard stop
+
+            except Exception as e:
+                logger.error(f"Database check failed: {e}")
+                await interaction.response.send_message(
+                    "Something went wrong while checking recent reports.",
+                    ephemeral=True
+                )
+                return
+        # Send alert and create thread
+        for cid in channel_ids:
+            channel = bot.get_channel(cid)
+            if channel and isinstance(channel, discord.TextChannel):
+                if command_name=='empty':
+                    try:
+                        now = datetime.now(ZoneInfo("America/New_York"))
+                        current_time = now.strftime("%I:%M %p")
+                        async with self.pool.acquire() as conn:
+                            await conn.execute(
+                            "INSERT INTO command_logs (user_id, timestamp, command_used) VALUES ($1, $2, $3)",
+                            interaction.user.id,
+                            now,
+                            "empty"
+                        )
+                        logger.info(f"✅ Logged /empty by {interaction.user} ({interaction.user.id}) at {now}")
+                    except Exception as e:
+                        logger.error(f"❌ Failed to log /empty usage: {e}")
+                    # Send confirmation message
+                    await interaction.response.defer(thinking=False, ephemeral=True)
+                    await interaction.followup.send("Success", ephemeral=True)
+                    await channel.send(
+                    f"📍 **{location} {store_choice} ** is empty as of **{current_time}**.")
+                else:
+                    # Respond to the user immediately
+                    await interaction.followup.send(
+                        content=f"Creating thread for {location} {store_choice}...",
+                        ephemeral=True
+                    )
+                    sent_message = await channel.send(content=f"{location} {store_choice} {mentions}")
+
+                    today_date = datetime.now(ZoneInfo("America/New_York")).date()
+                    formatted = f"{today_date.strftime('%A %B')} {today_date.day}"
+                    thread_name = f"{formatted}: {location.title()} {store_choice.title()} Restock"
+
+                    thread = await channel.create_thread(
+                        name=thread_name,
+                        type=discord.ChannelType.public_thread,
+                        message=sent_message,
+                        slowmode_delay=15
+                    )
+                    if thread is None:
+                        logger.error("Failed to create thread.")
+                        return
+                    self.restock_thread_map[sent_message.id] = {
+                    "thread_id": thread.id,
+                    "base_name": thread_name
+                    }
+
+                    for emoji in THREAD_RENAME_EMOJIS:
+                        await sent_message.add_reaction(emoji)
+                        
+                    
+
+                    # Send initial description in thread
+                    location_key = f"{loc_key}_{store_key}"
+                    if location_key in location_links:
+                        desc = f"Restock at {store_choice.title()} in **{location.title()}**. [Google maps]({location_links.get(location_key)})"
+                    else:
+                        desc = f"Restock at {store_choice.title()} in **{location.title()}**."
+
+                    await thread.send(desc)
+                    await asyncio.sleep(120)
+                    await thread.edit(slowmode_delay=0)
+
+                    break
+
+        
+
+        # Log to database
+        if command_name == "restock":
+            try:
+                eastern_time = datetime.now(ZoneInfo("America/New_York"))
+                async with self.pool.acquire() as conn:
+                    await conn.execute(
+                        "INSERT INTO restock_reports (user_id, store_name, location, date, channel_name) VALUES ($1, $2, $3, $4, $5)",
+                        interaction.user.id,
+                        store_choice,
+                        location,
+                        eastern_time,
+                        channel.name
+                    )
+                    logger.info(f"✅ Logged restock report: {location} {store_choice} by {interaction.user} at {eastern_time}")
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to log restock report: {e}")
+    
+    
+    
+    
     # ---------------- COMMANDS ----------------
     @app_commands.command(name="restock", description="Choose a store and location to create a thread.")
     @app_commands.guilds(discord.Object(id=1406738815854317658))
