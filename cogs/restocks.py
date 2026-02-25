@@ -85,7 +85,7 @@ NY_TZ = pytz.timezone("America/New_York")
  # Define reactions that rename thread
 THREAD_RENAME_EMOJIS = {
     "✅": "(Still in stock)",
-    "❎": "(Cooked)"
+    "💀": "(Cooked)"
     }
 
 
@@ -299,7 +299,7 @@ class LocationNameModal(discord.ui.Modal, title="Enter Location Name"):
         )
         
         await interaction.response.send_message(
-            content=f"Create restock thread for **{self.location} {self.store_choice}**? False alarms will result in appropriate punishment, including but not limited to: loss of bot use privilege, server timeout, server ban.",
+            content=f"Create restock thread for **{location_value} {self.store_choice}**? False alarms will result in appropriate punishment, including but not limited to: loss of bot use privilege, server timeout, server ban.",
             view=view,
             ephemeral=True
         )
@@ -667,7 +667,6 @@ class Restocks(commands.Cog):
                     except Exception as e:
                         logger.error(f"❌ Failed to log /empty usage: {e}")
                     # Send confirmation message
-                    await interaction.response.defer(thinking=False, ephemeral=True)
                     await interaction.followup.send("Success", ephemeral=True)
                     await channel.send(
                     f"📍 **{location} {store_choice} ** is empty as of **{current_time}**.")
