@@ -84,7 +84,7 @@ SUMMARY_HOUR = 22  # 24-hour format (22 = 10 PM Eastern)
 NY_TZ = pytz.timezone("America/New_York")
  # Define reactions that rename thread
 THREAD_RENAME_EMOJIS = {
-    "\:Stonks~2:": "(Vendor Stocking)",
+    #"\:Stonks~2:": "(Vendor Stocking)",
     "✅": "(Still in stock)",
     "💀": "(Cooked)"
     }
