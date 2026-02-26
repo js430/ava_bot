@@ -84,12 +84,14 @@ SUMMARY_HOUR = 22  # 24-hour format (22 = 10 PM Eastern)
 NY_TZ = pytz.timezone("America/New_York")
  # Define reactions that rename thread
 THREAD_RENAME_EMOJIS = {
+    "\:Stonks~2:": "(Vendor Stocking)",
     "✅": "(Still in stock)",
     "💀": "(Cooked)"
     }
 
 
 class AreaChoiceView(discord.ui.View):
+    
     def __init__(self, interaction: discord.Interaction, command_name: str, cog: "Restocks"):
         super().__init__(timeout=60)
         self.interaction = interaction
