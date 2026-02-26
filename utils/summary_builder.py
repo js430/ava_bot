@@ -27,6 +27,7 @@ async def build_monthly_summary_embed(pool, store_name: str | None = None):
         COUNT(*) FILTER (WHERE EXTRACT(DOW FROM date) = 6) AS sat
     FROM restock_reports
     WHERE date >= NOW() - INTERVAL '30 days' and store_name='Target'
+    LIMIT 10
     """
 
     params = []
