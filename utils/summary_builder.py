@@ -17,7 +17,7 @@ async def build_monthly_summary_embeds(pool, store_name: str | None = None):
             COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 6) AS sat
         FROM restock_reports r
         INNER JOIN locations l
-            ON r.store_name = l.store_name
+            ON r.store_name = l.store_type
         AND r.location = l.location
         WHERE r.date >= NOW() - INTERVAL '30 days'
         """
