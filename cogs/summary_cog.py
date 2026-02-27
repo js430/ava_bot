@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import asyncio
 
 class SummaryCog(commands.Cog):
-    TARGET_TIME = time(hour=20, minute=28)  # Midnight
+    TARGET_TIME = time(hour=21, minute=30)  # Midnight
     TARGET_ZONE = ZoneInfo("America/New_York")  # EST/EDT automatically
 
     def __init__(self, bot):
