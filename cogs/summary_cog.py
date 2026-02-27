@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import asyncio
 
 class SummaryCog(commands.Cog):
-    TARGET_TIME = time(hour=20, minute=18)  # Midnight
+    TARGET_TIME = time(hour=20, minute=21)  # Midnight
     TARGET_ZONE = ZoneInfo("America/New_York")  # EST/EDT automatically
 
     def __init__(self, bot):
@@ -33,11 +33,6 @@ class SummaryCog(commands.Cog):
             return
         embeds = await build_monthly_summary_embeds(self.pool)
         await channel.send(embeds=embeds)
-
-        # Delete previous bot summary messages
-        async for message in channel.history(limit=20):
-            if message.author == self.bot.user:
-                await message.delete()
 
     @update_summary.before_loop
     async def before_update_summary(self):
