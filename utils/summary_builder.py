@@ -2,6 +2,7 @@ import discord
 from datetime import datetime, timezone
 
 DAYS_HEADER = "Su Mo Tu We Th Fr Sa"
+MAX_FIELDS=25
 
 def heat(count: int) -> str:
     if count == 0:
@@ -13,7 +14,7 @@ def heat(count: int) -> str:
     else:
         return "🔴"
 
-async def build_monthly_summary_embed(pool, store_name: str | None = None):
+async def build_monthly_summary_embeds(pool, store_name: str | None = None):
     base_query = """
     SELECT
         store_name,
@@ -48,11 +49,14 @@ async def build_monthly_summary_embed(pool, store_name: str | None = None):
     if store_name:
         title += f" — {store_name}"
 
+    embeds = []
     embed = discord.Embed(
-        title=title,
+        title="📊 Monthly Restock Heat Map (Last 30 Days)",
         color=discord.Color.blue(),
         timestamp=datetime.now(timezone.utc)
     )
+
+    field_count = 0
 
     for row in rows:
         heat_row = " ".join([
@@ -65,12 +69,22 @@ async def build_monthly_summary_embed(pool, store_name: str | None = None):
             heat(row["sat"]),
         ])
 
+        if field_count >= MAX_FIELDS:
+            embeds.append(embed)
+            embed = discord.Embed(
+                title="📊 Monthly Restock Heat Map (Continued)",
+                color=discord.Color.blue(),
+                timestamp=datetime.now(timezone.utc)
+            )
+            field_count = 0
+
         embed.add_field(
             name=f"{row['store_name']} — {row['location']}",
-            value=f"```\n{DAYS_HEADER}\n{heat_row}\n```",
+            value=f"```\nSu Mo Tu We Th Fr Sa\n{heat_row}\n```",
             inline=False
         )
 
-    embed.set_footer(text="⚫ 0 | 🟡 1–2 | 🟠 3–4 | 🔴 5+")
-
-    return embed
+        field_count += 1
+        embed.set_footer(text="⚫ 0 | 🟡 1–2 | 🟠 3–4 | 🔴 5+")
+    embeds.append(embed)
+    return embeds

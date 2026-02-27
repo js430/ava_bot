@@ -1,14 +1,14 @@
 import discord
 from discord.ext import commands, tasks
 from datetime import datetime, timezone
-from utils.summary_builder import build_monthly_summary_embed
+from utils.summary_builder import build_monthly_summary_embeds
 import asyncpg
 from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 import asyncio
 
 class SummaryCog(commands.Cog):
-    TARGET_TIME = time(hour=23, minute=6)  # Midnight
+    TARGET_TIME = time(hour=20, minute=15)  # Midnight
     TARGET_ZONE = ZoneInfo("America/New_York")  # EST/EDT automatically
 
     def __init__(self, bot):
@@ -31,16 +31,14 @@ class SummaryCog(commands.Cog):
         channel = self.bot.get_channel(1476422897940828293)
         if not channel:
             return
-
-        embed = await build_monthly_summary_embed(self.pool)
+        embeds = await build_monthly_summary_embeds(self.pool)
+        await channel.send(embeds=embeds)
 
         # Delete previous bot summary messages
         async for message in channel.history(limit=20):
             if message.author == self.bot.user:
                 await message.delete()
 
-        # Send fresh summary
-        await channel.send(embed=embed)
     @update_summary.before_loop
     async def before_update_summary(self):
         await self.bot.wait_until_ready()
