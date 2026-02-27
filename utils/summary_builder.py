@@ -5,35 +5,34 @@ MAX_FIELDS = 25
 
 async def build_monthly_summary_embeds(pool, store_name: str | None = None):
     base_query = """
-    SELECT
-    r.store_name,
-    r.location,
-    COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 0) AS sun,
-    COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 1) AS mon,
-    COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 2) AS tue,
-    COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 3) AS wed,
-    COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 4) AS thu,
-    COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 5) AS fri,
-    COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 6) AS sat
-    FROM restock_reports r
-    INNER JOIN locations l
-        ON r.store_name = l.store_name
-    AND r.location = l.location
-    WHERE r.date >= NOW() - INTERVAL '30 days'
-    GROUP BY r.store_name, r.location
-    ORDER BY r.store_name, r.location;
-    """
+        SELECT
+            r.store_name,
+            r.location,
+            COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 0) AS sun,
+            COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 1) AS mon,
+            COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 2) AS tue,
+            COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 3) AS wed,
+            COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 4) AS thu,
+            COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 5) AS fri,
+            COUNT(*) FILTER (WHERE EXTRACT(DOW FROM r.date) = 6) AS sat
+        FROM restock_reports r
+        INNER JOIN locations l
+            ON r.store_name = l.store_name
+        AND r.location = l.location
+        WHERE r.date >= NOW() - INTERVAL '30 days'
+        """
 
     params = []
 
     if store_name:
-        base_query += " AND store_name = $1"
+        base_query += " AND r.store_name = $1"
         params.append(store_name)
 
     base_query += """
-    GROUP BY store_name, location
-    ORDER BY store_name, location;
+    GROUP BY r.store_name, r.location
+    ORDER BY r.store_name, r.location;
     """
+
 
     async with pool.acquire() as conn:
         rows = await conn.fetch(base_query, *params)
