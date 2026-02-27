@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import asyncio
 
 class SummaryCog(commands.Cog):
-    TARGET_TIME = time(hour=20, minute=21)  # Midnight
+    TARGET_TIME = time(hour=20, minute=28)  # Midnight
     TARGET_ZONE = ZoneInfo("America/New_York")  # EST/EDT automatically
 
     def __init__(self, bot):
@@ -31,7 +31,7 @@ class SummaryCog(commands.Cog):
         channel = self.bot.get_channel(1476422897940828293)
         if not channel:
             return
-        embeds = await build_monthly_summary_embeds(self.pool)
+        embeds = await build_monthly_summary_embeds(self.pool, 'Target')
         await channel.send(embeds=embeds)
 
     @update_summary.before_loop
