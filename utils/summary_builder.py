@@ -53,7 +53,7 @@ async def build_monthly_summary_embeds(pool, store_name: str | None = None):
 
     for row in rows:
         # Raw counts instead of heat icons
-        day_row = " | ".join([
+        count_row = " | ".join([
             format_day(row["sun"]),
             format_day(row["mon"]),
             format_day(row["tue"]),
