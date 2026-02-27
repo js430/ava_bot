@@ -3,6 +3,11 @@ from datetime import datetime, timezone
 
 MAX_FIELDS = 25
 
+def format_day(count: int) -> str:
+    if count >= 4:
+        return f"**{count}**"
+    return str(count)
+
 async def build_monthly_summary_embeds(pool, store_name: str | None = None):
     base_query = """
         SELECT
@@ -48,15 +53,15 @@ async def build_monthly_summary_embeds(pool, store_name: str | None = None):
 
     for row in rows:
         # Raw counts instead of heat icons
-        count_row = (
-            f"{row['sun']:>2}  "
-            f"{row['mon']:>2}  "
-            f"{row['tue']:>2}  "
-            f"{row['wed']:>2}  "
-            f"{row['thu']:>2}  "
-            f"{row['fri']:>2}  "
-            f"{row['sat']:>2}"
-        )
+        count_row = " | ".join([
+            format_day(row["sun"]),
+            format_day(row["mon"]),
+            format_day(row["tue"]),
+            format_day(row["wed"]),
+            format_day(row["thu"]),
+            format_day(row["fri"]),
+            format_day(row["sat"]),
+        ])
 
         if field_count >= MAX_FIELDS:
             embeds.append(embed)
