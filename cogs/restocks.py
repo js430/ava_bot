@@ -704,6 +704,7 @@ class Restocks(commands.Cog):
                         message=sent_message,
                         slowmode_delay=15
                     )
+                    created_at = datetime.now(eastern)
                     if thread is None:
                         logger.error("Failed to create thread.")
                         return
@@ -715,16 +716,29 @@ class Restocks(commands.Cog):
                     for emoji in THREAD_RENAME_EMOJIS:
                         await sent_message.add_reaction(emoji)
                         
-                    
-
                     # Send initial description in thread
                     location_key = f"{loc_key}_{store_key}"
                     if location_key in location_links:
                         desc = f"Restock at {store_choice.title()} in **{location.title()}**. [Google maps]({location_links.get(location_key)})"
                     else:
                         desc = f"Restock at {store_choice.title()} in **{location.title()}**."
-
                     await thread.send(desc)
+
+                    eastern = ZoneInfo("America/New_York")
+                    unlock_time = created_at + timedelta(minutes=8)
+
+                    unlock_unix = int(unlock_time.timestamp())
+
+                    await thread.send(
+                        content=(
+                            "@here 🚨 **Please do NOT ask what is being restocked.**\n\n"
+                            f"You may ask if details have not been shared by t <t:{unlock_unix}:t>.\n"
+                            f"That is <t:{unlock_unix}:R>.\n\n"
+                            "Sit tight."
+                        ))
+                    
+                    
+                    
                     await asyncio.sleep(120)
                     await thread.edit(slowmode_delay=0)
 
