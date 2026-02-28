@@ -732,7 +732,7 @@ class Restocks(commands.Cog):
 
                     await thread.send(
                         content=(
-                            "@here 🚨 **Please do NOT ask what is being restocked** until the poster posts what is being restocked, or <t:{unlock_unix}:R>, whichever comes first.\n\n"
+                            f"@here 🚨 **Please do NOT ask what is being restocked** until the poster posts what is being restocked, or <t:{unlock_unix}:R>, whichever comes first.\n\n"
                             "Sit tight, and as always, give thanks to whoever reported the restock.🙏"
                         ))
                     await asyncio.sleep(120)
