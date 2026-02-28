@@ -697,7 +697,8 @@ class Restocks(commands.Cog):
                     today_date = datetime.now(ZoneInfo("America/New_York")).date()
                     formatted = f"{today_date.strftime('%A %B')} {today_date.day}"
                     thread_name = f"{formatted}: {location.title()} {store_choice.title()} Restock"
-
+                    if command_name=='test_restock':
+                        thread_name='TEST'
                     thread = await channel.create_thread(
                         name=thread_name,
                         type=discord.ChannelType.public_thread,
