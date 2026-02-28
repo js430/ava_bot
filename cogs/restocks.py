@@ -704,6 +704,7 @@ class Restocks(commands.Cog):
                         message=sent_message,
                         slowmode_delay=15
                     )
+                    eastern = ZoneInfo("America/New_York")
                     created_at = datetime.now(eastern)
                     if thread is None:
                         logger.error("Failed to create thread.")
@@ -724,7 +725,6 @@ class Restocks(commands.Cog):
                         desc = f"Restock at {store_choice.title()} in **{location.title()}**."
                     await thread.send(desc)
 
-                    eastern = ZoneInfo("America/New_York")
                     unlock_time = created_at + timedelta(minutes=8)
 
                     unlock_unix = int(unlock_time.timestamp())
@@ -736,15 +736,10 @@ class Restocks(commands.Cog):
                             f"That is <t:{unlock_unix}:R>.\n\n"
                             "Sit tight."
                         ))
-                    
-                    
-                    
                     await asyncio.sleep(120)
                     await thread.edit(slowmode_delay=0)
 
                     break
-
-        
 
         # Log to database
         if command_name == "restock":
