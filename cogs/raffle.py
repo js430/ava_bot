@@ -117,9 +117,20 @@ class Raffle(commands.Cog):
                     raffle["message_id"]
                 )
 
-                remaining = raffle["max_entries"] - total_used
+                # Get user's current entry count
+                existing_entry = await conn.fetchval(
+                    "SELECT entries FROM raffle_entries WHERE user_id=$1 AND message_id=$2",
+                    interaction.user.id,
+                    raffle["message_id"]
+                )
 
-                if entry_amount > remaining:
+                existing_entry = existing_entry or 0
+
+                # Calculate adjusted total
+                adjusted_total = total_used - existing_entry + entry_amount
+
+                if adjusted_total > raffle["max_entries"]:
+                    remaining = raffle["max_entries"] - (total_used - existing_entry)
                     return await interaction.followup.send(
                         f"Only {remaining} entries remaining.",
                         ephemeral=True
@@ -140,8 +151,8 @@ class Raffle(commands.Cog):
                     amount
                 )
 
-                # Auto close if full
-                if remaining - entry_amount == 0:
+                # Auto-close if full
+                if adjusted_total == raffle["max_entries"]:
                     await conn.execute(
                         "UPDATE raffles SET is_closed=TRUE WHERE message_id=$1",
                         raffle["message_id"]
@@ -154,7 +165,7 @@ class Raffle(commands.Cog):
         await self.update_embed(interaction.message, raffle)
 
         await interaction.followup.send(
-            f"You are entered with {entry_amount} entries.",
+            f"Your entry has been updated to {entry_amount} entries.",
             ephemeral=True
         )
 
@@ -189,54 +200,82 @@ class Raffle(commands.Cog):
     # ---------------------------------------------------------
     # FINALIZE RAFFLE
     # ---------------------------------------------------------
-
-    @app_commands.command(name="finalizeraffle")
+    
+    @app_commands.command(name="finalize_raffle", description="Finalize the raffle in this thread.")
     @app_commands.guilds(discord.Object(id=1406738815854317658))
-    async def finalizeraffle(self, interaction: discord.Interaction, message_id: str):
+    async def finalize_raffle(self, interaction: discord.Interaction):
+
+    # Must be used inside a thread
+        if not isinstance(interaction.channel, discord.Thread):
+            return await interaction.response.send_message(
+                "This command must be used inside a raffle thread.",
+                ephemeral=True
+            )
+
+        thread_id = interaction.channel.id
+
         if not self.pool:
             return await interaction.response.send_message(
                 "Database not available.",
                 ephemeral=True
             )
 
-        await interaction.response.defer(ephemeral=True)
-        message_id = int(message_id)
+        await interaction.response.defer()
 
-        raffle = await self.pool.fetchrow(
-            "SELECT * FROM raffles WHERE message_id=$1",
-            message_id
-        )
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
 
-        if not raffle:
-            return await interaction.followup.send("Raffle not found.")
+                raffle = await conn.fetchrow(
+                    "SELECT * FROM raffles WHERE thread_id=$1 FOR UPDATE",
+                    thread_id
+                )
 
-        await self.pool.execute(
-            "UPDATE raffles SET is_closed=TRUE WHERE message_id=$1",
-            message_id
-        )
+                if not raffle:
+                    return await interaction.followup.send(
+                        "raffle id cannot be found"
+                    )
 
-        entries = await self.pool.fetch(
-            "SELECT * FROM raffle_entries WHERE message_id=$1",
-            message_id
-        )
+                if raffle["is_closed"]:
+                    return await interaction.followup.send(
+                        "This raffle is already finalized."
+                    )
 
-        thread = interaction.guild.get_thread(raffle["thread_id"])
+                entries = await conn.fetch(
+                    """
+                    SELECT user_id, entries, amount
+                    FROM raffle_entries
+                    WHERE message_id=$1
+                    ORDER BY entries DESC
+                    """,
+                    raffle["message_id"]
+                )
 
-        lines = [f"🎉 **Raffle Finalized: {raffle['name']}**\n"]
+                # Mark raffle closed
+                await conn.execute(
+                    "UPDATE raffles SET is_closed=TRUE WHERE thread_id=$1",
+                    thread_id
+                )
 
-        for row in entries:
-            total = row["entries"] * raffle["cost_per_entry"]
-            lines.append(
-                f"<@{row['user_id']}> — {row['entries']} entries — owes **${total:.2f}**"
+        if not entries:
+            return await interaction.followup.send(
+                "No entries were found. Raffle closed."
             )
 
-        await thread.send("\n".join(lines))
+        # Build output message
+        lines = []
+        for row in entries:
+            member = interaction.guild.get_member(row["user_id"])
+            mention = member.mention if member else f"<@{row['user_id']}>"
 
-        channel = interaction.guild.get_channel(raffle["channel_id"])
-        message = await channel.fetch_message(message_id)
-        await message.edit(view=None)
+            lines.append(
+                f"{mention} • Entries: {row['entries']} • Owes: ${row['amount']}"
+            )
 
-        await interaction.followup.send("Raffle finalized and closed.")
+        output = "\n".join(lines)
+
+        await interaction.followup.send(
+            f"📊 **Raffle Finalized**\n\n{output}"
+        )
 
 
 async def setup(bot: commands.Bot):
