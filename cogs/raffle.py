@@ -206,7 +206,7 @@ class Raffle(commands.Cog):
                     )
 
         thread = interaction.guild.get_thread(raffle["thread_id"])
-        if thread:
+        if thread and entry_amount!=0:
             await thread.add_user(interaction.user)
 
         await self.update_embed(interaction.message, raffle)
