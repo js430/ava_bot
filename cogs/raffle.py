@@ -106,6 +106,56 @@ class Raffle(commands.Cog):
                         ephemeral=True
                     )
 
+                # ----------------------------
+                # REMOVE ENTRY (0 BUTTON)
+                # ----------------------------
+                if entry_amount == 0:
+
+                    existing_entry = await conn.fetchval(
+                        "SELECT entries FROM raffle_entries WHERE user_id=$1 AND message_id=$2",
+                        interaction.user.id,
+                        raffle["message_id"]
+                    )
+
+                    if not existing_entry:
+                        return await interaction.followup.send(
+                            "You do not have an active raffle entry.",
+                            ephemeral=True
+                        )
+
+                    await conn.execute(
+                        """
+                        DELETE FROM raffle_entries
+                        WHERE user_id=$1 AND message_id=$2
+                        """,
+                        interaction.user.id,
+                        raffle["message_id"]
+                    )
+
+                    # Recalculate total
+                    total_used = await conn.fetchval(
+                        "SELECT COALESCE(SUM(entries),0) FROM raffle_entries WHERE message_id=$1",
+                        raffle["message_id"]
+                    )
+
+                    # Reopen if previously closed and now space exists
+                    if raffle["is_closed"] and total_used < raffle["max_entries"]:
+                        await conn.execute(
+                            "UPDATE raffles SET is_closed=FALSE WHERE message_id=$1",
+                            raffle["message_id"]
+                        )
+
+                    thread = interaction.guild.get_thread(raffle["thread_id"])
+                    if thread:
+                        try:
+                            await thread.remove_user(interaction.user)
+                        except:
+                            pass
+
+                # ----------------------------
+                # NORMAL ENTRY LOGIC BELOW
+                # ----------------------------
+
                 if entry_amount > raffle["max_entries_per_user"]:
                     return await interaction.followup.send(
                         f"You may only enter up to {raffle['max_entries_per_user']} entries.",
@@ -117,7 +167,6 @@ class Raffle(commands.Cog):
                     raffle["message_id"]
                 )
 
-                # Get user's current entry count
                 existing_entry = await conn.fetchval(
                     "SELECT entries FROM raffle_entries WHERE user_id=$1 AND message_id=$2",
                     interaction.user.id,
@@ -126,7 +175,6 @@ class Raffle(commands.Cog):
 
                 existing_entry = existing_entry or 0
 
-                # Calculate adjusted total
                 adjusted_total = total_used - existing_entry + entry_amount
 
                 if adjusted_total > raffle["max_entries"]:
@@ -151,7 +199,6 @@ class Raffle(commands.Cog):
                     amount
                 )
 
-                # Auto-close if full
                 if adjusted_total == raffle["max_entries"]:
                     await conn.execute(
                         "UPDATE raffles SET is_closed=TRUE WHERE message_id=$1",
@@ -163,12 +210,25 @@ class Raffle(commands.Cog):
             await thread.add_user(interaction.user)
 
         await self.update_embed(interaction.message, raffle)
+        raffle_refetch = await self.pool.fetchrow(
+            "SELECT * FROM raffles WHERE message_id=$1",
+            raffle["message_id"]
+        )
+
+        if raffle_refetch and not raffle_refetch["is_closed"]:
+            view = RaffleView(
+                cog=self,
+                raffle_data={
+                    "message_id": raffle["message_id"],
+                    "max_entries_per_user": raffle["max_entries_per_user"]
+                }
+            )
+            await interaction.message.edit(view=view)
 
         await interaction.followup.send(
             f"Your entry has been updated to {entry_amount} entries.",
             ephemeral=True
         )
-
     # ---------------------------------------------------------
     # UPDATE EMBED
     # ---------------------------------------------------------
