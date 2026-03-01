@@ -137,3 +137,6 @@ class Raffle(commands.Cog):
         await message.edit(view=None)
 
         await interaction.followup.send("Raffle finalized and closed.")
+        
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Raffle(bot))
