@@ -36,12 +36,12 @@ class Raffle(commands.Cog):
         await interaction.response.defer(ephemeral=True)
 
         thread = await interaction.channel.create_thread(
-            name=f"Raffle - {name}",
+            name=f"Waffle - {name}",
             type=discord.ChannelType.private_thread
         )
 
         embed = discord.Embed(
-            title=f"🎟️ Raffle: {name}",
+            title=f"🎟️ Waffle: {name}",
             color=discord.Color.green()
         )
         embed.add_field(name="Max Entries", value=max_entries)
