@@ -139,9 +139,18 @@ class Raffle(commands.Cog):
                     )
 
                     # Reopen if previously closed and now space exists
-                    if raffle["is_closed"] and total_used < raffle["max_entries"]:
+                    # Reopen only if it was closed due to being full (not finalized)
+                    if (
+                        raffle["is_closed"]
+                        and not raffle["is_finalized"]
+                        and total_used < raffle["max_entries"]):
+                        
                         await conn.execute(
-                            "UPDATE raffles SET is_closed=FALSE WHERE message_id=$1",
+                            """
+                            UPDATE raffles
+                            SET is_closed=FALSE
+                            WHERE message_id=$1
+                            """,
                             raffle["message_id"]
                         )
 
@@ -295,10 +304,10 @@ class Raffle(commands.Cog):
                         "raffle id cannot be found"
                     )
 
-                if raffle["is_closed"]:
+                if raffle["is_finalized"]:
                     return await interaction.followup.send(
-                        "This raffle is already finalized."
-                    )
+                    "This raffle is already finalized."
+                )
 
                 entries = await conn.fetch(
                     """
@@ -312,9 +321,14 @@ class Raffle(commands.Cog):
 
                 # Mark raffle closed
                 await conn.execute(
-                    "UPDATE raffles SET is_closed=TRUE WHERE thread_id=$1",
-                    thread_id
-                )
+                """
+                UPDATE raffles
+                SET is_closed=TRUE,
+                    is_finalized=TRUE
+                WHERE thread_id=$1
+                """,
+                thread_id
+            )
 
         if not entries:
             return await interaction.followup.send(

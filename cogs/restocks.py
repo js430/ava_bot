@@ -163,6 +163,10 @@ class StoreChoiceView(discord.ui.View):
     @discord.ui.button(label="5 Below", style=discord.ButtonStyle.primary)
     async def five_below(self, interaction: discord.Interaction, _):
         await self.handle_store_choice(interaction, "5 Below")
+    
+    @discord.ui.button(label="PKC", style=discord.ButtonStyle.primary)
+    async def pkc(self, interaction: discord.Interaction, _):
+        await self.handle_store_choice(interaction, "PKC")
         
     @discord.ui.button(label="Other", style=discord.ButtonStyle.secondary)
     async def other(self, interaction: discord.Interaction, _):
@@ -604,8 +608,10 @@ class Restocks(commands.Cog):
             elif area=='CVA':
                 channel_ids.append(alert_channels.get("rva"))
                 role_ids.extend([role_pings.get("rva"), role_pings.get(store_key)])
-            elif area=='Online':
+            elif area=='Online' and store_choice!='PKC':
                 channel_ids.append(1459727324793798907)
+            elif area=='Online' and store_choice=='PKC':
+                channel_ids.append(1459725649437524031)
             else:
                 channel_ids.append(interaction.channel_id)
             
