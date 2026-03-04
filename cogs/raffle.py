@@ -348,7 +348,7 @@ class Raffle(commands.Cog):
         output = "\n".join(lines)
 
         await interaction.followup.send(
-            f"📊 **Raffle Finalized**\n\n{output}"
+            f"📊 **Waffle Finalized**\n\n{output}"
         )
 
 
