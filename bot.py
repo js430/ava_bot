@@ -54,7 +54,8 @@ async def load_cogs():
         "cogs.database",
         "cogs.restocks",
         "cogs.raffle",
-        "cogs.summary_cog"
+        "cogs.summary_cog",
+        "cogs.vmtimes"
     ]
 
     for cog in cogs:
