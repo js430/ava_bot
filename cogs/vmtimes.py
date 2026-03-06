@@ -35,7 +35,7 @@ class VMTimes(commands.Cog):
             return
 
         rows = [(r["location"], r["refresh_time"]) for r in records]
-        view = RefreshTableView(rows)
+        view = RefreshTableView(rows, cog=self)
         await interaction.followup.send(embed=view.build_embed(), view=view)
 
 
