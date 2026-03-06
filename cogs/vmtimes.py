@@ -20,7 +20,7 @@ class VMTimes(commands.Cog):
         try:
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch(
-                    "SELECT location, refresh_time FROM vm_times ORDER BY location"
+                    "SELECT location, refresh_time FROM "vm times" ORDER BY location"
                 )
         except Exception:
             await interaction.followup.send(
