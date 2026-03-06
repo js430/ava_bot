@@ -412,8 +412,6 @@ class Restocks(commands.Cog):
         self.daily_summary_task.start() 
         self.restock_thread_map={}
 
-    
-    
     @property
     def pool(self) -> asyncpg.Pool | None:
         return getattr(self.bot, "db_pool", None)

@@ -2,12 +2,17 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from views.refresh_table_view import RefreshTableView
+import asyncpg
 
 class VMTimes(commands.Cog):
     """Displays VM refresh times from the vm_times table."""
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        
+    @property
+    def pool(self) -> asyncpg.Pool | None:
+        return getattr(self.bot, "db_pool", None)
 
     @app_commands.command(
         name="vm_times",
@@ -18,7 +23,7 @@ class VMTimes(commands.Cog):
         await interaction.response.defer(thinking=True)
 
         try:
-            async with self.bot.db_pool.acquire() as conn:
+            async with self.pool.acquire() as conn:
                 records = await conn.fetch(
                     'SELECT location, refresh_time FROM "vm times" ORDER BY location'
                 )

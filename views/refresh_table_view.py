@@ -1,5 +1,9 @@
 import discord
 from typing import List, Tuple
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .vmtimes import vmtimes
 
 
 def extrapolate_half_hour(minute: int) -> str:
@@ -63,10 +67,10 @@ class UpdateTimeModal(discord.ui.Modal, title="Update Refresh Time"):
         required=True,
     )
 
-    def __init__(self, location: str, db_pool, parent_message: discord.Message):
+    def __init__(self, location: str, cog:"vmtimes", parent_message: discord.Message):
         super().__init__()
         self.location = location
-        self.db_pool = db_pool
+        self.cog = cog
         self.parent_message = parent_message
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -80,19 +84,18 @@ class UpdateTimeModal(discord.ui.Modal, title="Update Refresh Time"):
 
         minute = int(raw)
 
-        async with self.db_pool.acquire() as conn:
+        async with self.cog.pool.acquire() as conn:
             await conn.execute(
-                "UPDATE vm_times SET refresh_time = $1 WHERE location = $2",
+                'UPDATE "vm times" SET refresh_time = $1 WHERE location = $2',
                 minute, self.location,
             )
 
-        # Refresh the parent embed
-        async with self.db_pool.acquire() as conn:
+        async with self.cog.pool.acquire() as conn:
             records = await conn.fetch(
-                "SELECT location, refresh_time FROM vm_times ORDER BY location"
+                'SELECT location, refresh_time FROM "vm times" ORDER BY location'
             )
         rows = [(r["location"], r["refresh_time"]) for r in records]
-        new_view = RefreshTableView(rows, self.db_pool)
+        new_view = RefreshTableView(rows, self.cog)
         await self.parent_message.edit(embed=new_view.build_embed(), view=new_view)
 
         await interaction.response.send_message(
@@ -107,24 +110,24 @@ class UpdateTimeModal(discord.ui.Modal, title="Update Refresh Time"):
 class LocationPickerView(discord.ui.View):
     """Ephemeral view with one button per location."""
 
-    def __init__(self, rows: List[Tuple[str, int]], db_pool, parent_message: discord.Message):
+    def __init__(self, rows: List[Tuple[str, int]], cog:"vmtimes", parent_message: discord.Message):
         super().__init__(timeout=60)
-        self.db_pool = db_pool
+        self.cog = cog
         self.parent_message = parent_message
 
         for location, _ in rows:
-            self.add_item(LocationButton(location, db_pool, parent_message))
+            self.add_item(LocationButton(location, cog, parent_message))
 
 
 class LocationButton(discord.ui.Button):
-    def __init__(self, location: str, db_pool, parent_message: discord.Message):
+    def __init__(self, location: str, cog, parent_message: discord.Message):
         super().__init__(label=location, style=discord.ButtonStyle.secondary)
         self.location = location
-        self.db_pool = db_pool
+        self.cog = cog
         self.parent_message = parent_message
 
     async def callback(self, interaction: discord.Interaction):
-        modal = UpdateTimeModal(self.location, self.db_pool, self.parent_message)
+        modal = UpdateTimeModal(self.location, self.cog, self.parent_message)
         await interaction.response.send_modal(modal)
 
 
@@ -139,31 +142,27 @@ class RefreshTableView(discord.ui.View):
     opens a modal where the user types the new refresh minute.
     """
 
-    def __init__(self, rows: List[Tuple[str, int]], db_pool):
+    def __init__(self, rows: List[Tuple[str, int]], cog:"vmtimes"):
         super().__init__(timeout=None)
         self.rows = rows
-        self.db_pool = db_pool
+        self.cog = cog
 
     def build_embed(self) -> discord.Embed:
         return build_table_embed(self.rows)
 
     async def refresh(self, message: discord.Message) -> None:
         """Re-query the DB and update the embed in-place."""
-        async with self.db_pool.acquire() as conn:
+        async with self.cog.pool.acquire() as conn:
             records = await conn.fetch(
-                "SELECT location, refresh_time FROM vm_times ORDER BY location"
+                'SELECT location, refresh_time FROM "vm times" ORDER BY location'
             )
         self.rows = [(r["location"], r["refresh_time"]) for r in records]
         await message.edit(embed=self.build_embed(), view=self)
 
-    # ------------------------------------------------------------------ #
-    #  "Update Time" button                                                #
-    # ------------------------------------------------------------------ #
-
     @discord.ui.button(label="Update Time", style=discord.ButtonStyle.primary, emoji="✏️")
     async def update_time(self, interaction: discord.Interaction, button: discord.ui.Button):
         """Send an ephemeral message with one button per location."""
-        picker = LocationPickerView(self.rows, self.db_pool, parent_message=interaction.message)
+        picker = LocationPickerView(self.rows, self.cog, parent_message=interaction.message)
         await interaction.response.send_message(
             "Select a location to update:",
             view=picker,
